@@ -1,0 +1,142 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="flex min-h-screen flex-col md:flex-row">
+    <!-- 左侧黑色部分 -->
+    <div class="hidden md:flex md:w-1/2 bg-black text-white flex-col justify-between p-8 sticky top-0 h-screen">
+        <div></div>
+        <div class="text-center">
+            <h1 class="text-4xl font-bold">你的反馈，值得被听见！</h1>
+        </div>
+        <div class="text-sm">
+            <a href="https://github.com/Qianxia666/feedback-platform" target="_blank" class="hover:underline">© feedback-platform</a>
+        </div>
+    </div>
+    
+    <!-- 右侧白色登录部分 -->
+    <div class="w-full md:w-1/2 bg-white flex items-center justify-center py-8 px-4 md:px-8 min-h-screen">
+        <div class="w-full max-w-md">
+            <div class="text-center mb-6">
+                <h1 class="text-3xl font-bold text-gray-900 mb-2">欢迎回来</h1>
+                <div class="h-1 w-16 bg-gradient-to-r from-gray-900 to-gray-500 rounded-full mx-auto"></div>
+            </div>
+            
+            <form method="post" action="" class="space-y-4">
+                {{ form.hidden_tag() }}
+                
+                <div>
+                    <label for="username" class="block text-sm font-medium text-gray-700 mb-1">用户名</label>
+                    {{ form.username(class="w-full px-3 py-2 border border-gray-300 rounded-2xl shadow-sm focus:outline-none focus:ring-2 focus:ring-black focus:border-black transition-all duration-200") }}
+                    {% if form.username.errors %}
+                    <div class="text-red-500 text-sm mt-1">
+                        {% for error in form.username.errors %}
+                        <p>{{ error }}</p>
+                        {% endfor %}
+                    </div>
+                    {% endif %}
+                </div>
+                
+                <div>
+                    <label for="password" class="block text-sm font-medium text-gray-700 mb-1">密码</label>
+                    <div class="relative">
+                        {{ form.password(class="w-full px-3 py-2 border border-gray-300 rounded-2xl shadow-sm focus:outline-none focus:ring-2 focus:ring-black focus:border-black transition-all duration-200") }}
+                        <button type="button" class="password-toggle absolute inset-y-0 right-0 pr-3 flex items-center text-gray-600 focus:outline-none">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 eye-open" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                            </svg>
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 eye-closed hidden" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21" />
+                            </svg>
+                        </button>
+                    </div>
+                    {% if form.password.errors %}
+                    <div class="text-red-500 text-sm mt-1">
+                        {% for error in form.password.errors %}
+                        <p>{{ error }}</p>
+                        {% endfor %}
+                    </div>
+                    {% endif %}
+                </div>
+                
+                <div class="flex items-center">
+                    {{ form.remember_me(class="h-4 w-4 text-black focus:ring-black border-gray-300 rounded") }}
+                    <label for="remember_me" class="ml-2 block text-sm text-gray-700">{{ form.remember_me.label.text }}</label>
+                </div>
+                
+                <div class="pt-2">
+                    {{ form.submit(class="w-full flex justify-center py-3 px-4 border border-transparent rounded-full shadow-md text-sm font-medium text-white bg-black hover:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-black transition-all duration-300 transform hover:-translate-y-1") }}
+                </div>
+            </form>
+            
+            <!-- OA登录方式 -->
+            <div class="mt-6 relative">
+                <div class="absolute inset-0 flex items-center">
+                    <div class="w-full border-t border-gray-300"></div>
+                </div>
+                <div class="relative flex justify-center text-sm">
+                    <span class="px-2 bg-white text-gray-500">或使用</span>
+                </div>
+            </div>
+            
+            <div class="mt-6">
+                <a href="#" class="w-full flex justify-center py-3 px-4 border border-gray-300 rounded-full shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500 transition-all duration-300">
+                    <span>OA 账号登录</span>
+                </a>
+            </div>
+            
+            <div class="mt-6 text-center">
+                <p class="text-sm text-gray-600">
+                    还没有账号？ <a href="{{ url_for('register') }}" class="font-medium text-black hover:underline">立即注册</a>
+                </p>
+            </div>
+            
+            {% with messages = get_flashed_messages() %}
+            {% if messages %}
+            <div class="mt-6 bg-red-50 border-l-4 border-red-400 p-4 rounded-r-2xl">
+                <div class="flex">
+                    <div class="flex-shrink-0">
+                        <svg class="h-5 w-5 text-red-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                        </svg>
+                    </div>
+                    <div class="ml-3">
+                        <p class="text-sm text-red-700">
+                            {% for message in messages %}
+                            {{ message }}
+                            {% endfor %}
+                        </p>
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+            {% endwith %}
+        </div>
+    </div>
+</div>
+
+<!-- 密码显示/隐藏功能的JavaScript -->
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const passwordToggles = document.querySelectorAll('.password-toggle');
+        
+        passwordToggles.forEach(toggle => {
+            toggle.addEventListener('click', function() {
+                const passwordField = this.parentElement.querySelector('input');
+                const eyeOpen = this.querySelector('.eye-open');
+                const eyeClosed = this.querySelector('.eye-closed');
+                
+                if (passwordField.type === 'password') {
+                    passwordField.type = 'text';
+                    eyeOpen.classList.add('hidden');
+                    eyeClosed.classList.remove('hidden');
+                } else {
+                    passwordField.type = 'password';
+                    eyeOpen.classList.remove('hidden');
+                    eyeClosed.classList.add('hidden');
+                }
+            });
+        });
+    });
+</script>
+{% endblock %} 

@@ -1,0 +1,155 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="max-w-6xl mx-auto">
+    <div class="mb-8">
+        <h1 class="text-3xl md:text-4xl font-bold text-gray-900 mb-2 tracking-tight relative">
+            用户管理
+            <span class="absolute top-0 -right-12 text-xs bg-black text-white px-2 py-1 rounded-full shadow-lg">管理面板</span>
+        </h1>
+        <div class="h-1 w-20 bg-gradient-to-r from-gray-900 to-gray-500 rounded-full"></div>
+    </div>
+    
+    <div class="bg-white rounded-2xl shadow-lg overflow-hidden mb-8 border border-gray-200 transform hover:scale-[1.01] transition-transform duration-300">
+        <div class="overflow-x-auto">
+            <table class="min-w-full divide-y divide-gray-200">
+                <thead class="bg-gradient-to-r from-gray-100 to-gray-50">
+                    <tr>
+                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">用户</th>
+                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">邮箱</th>
+                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">角色</th>
+                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">状态</th>
+                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">注册时间</th>
+                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">操作</th>
+                    </tr>
+                </thead>
+                <tbody class="bg-white divide-y divide-gray-200">
+                    {% for user in users.user_list %}
+                    <tr class="hover:bg-gray-50 transition-colors duration-300">
+                        <td class="px-6 py-4 whitespace-nowrap">
+                            <div class="flex items-center">
+                                <div class="flex-shrink-0 w-10 h-10 rounded-full bg-gradient-to-br from-gray-200 to-gray-300 flex items-center justify-center text-gray-700 font-semibold shadow-sm">
+                                    {{ user.username[0] | upper }}
+                                </div>
+                                <div class="ml-4">
+                                    <a href="{{ url_for('user_profile', username=user.username) }}" class="text-sm font-medium text-gray-900 hover:text-black hover:underline">{{ user.username }}</a>
+                                    <div class="text-xs text-gray-500">ID: {{ user.id }}</div>
+                                </div>
+                            </div>
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap">
+                            <div class="text-sm text-gray-500">{{ user.email }}</div>
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap">
+                            {% if user.is_admin %}
+                            <span class="px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-black text-white shadow-sm">
+                                管理员
+                            </span>
+                            {% elif user.is_sub_admin %}
+                            <span class="px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-gray-800 text-white shadow-sm">
+                                子管理员
+                            </span>
+                            {% else %}
+                            <span class="px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-gray-100 text-gray-800 shadow-sm">
+                                普通用户
+                            </span>
+                            {% endif %}
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap">
+                            {% if user.is_banned %}
+                            <span class="px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-red-100 text-red-800 shadow-sm">
+                                已封禁
+                            </span>
+                            {% else %}
+                            <span class="px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800 shadow-sm">
+                                正常
+                            </span>
+                            {% endif %}
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                            {% if user.created_at %}{{ user.created_at|format_datetime('%Y-%m-%d %H:%M') }}{% else %}未知{% endif %}
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-xs space-x-2">
+                            <a href="{{ url_for('edit_user', user_id=user.id) }}" class="text-gray-600 hover:text-gray-900 hover:underline transition-colors duration-200">编辑</a>
+                            
+                            {% if current_user.is_admin %}
+                            {% if not user.is_admin and not user.is_sub_admin %}
+                            <a href="{{ url_for('promote_user', user_id=user.id, role='sub_admin') }}" class="text-indigo-600 hover:text-indigo-900 hover:underline transition-colors duration-200">提升为子管理员</a>
+                            {% elif user.is_sub_admin %}
+                            <a href="{{ url_for('demote_user', user_id=user.id) }}" class="text-yellow-600 hover:text-yellow-900 hover:underline transition-colors duration-200">降级</a>
+                            {% endif %}
+                            {% endif %}
+                            
+                            {% if user.is_banned %}
+                            <a href="{{ url_for('unban_user', user_id=user.id) }}" class="text-green-600 hover:text-green-900 hover:underline transition-colors duration-200">解除封禁</a>
+                            {% else %}
+                            {% if user.id != current_user.id %}
+                            <a href="{{ url_for('ban_user', user_id=user.id) }}" class="text-red-600 hover:text-red-900 hover:underline transition-colors duration-200">封禁</a>
+                            {% endif %}
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+    
+    <!-- 分页 -->
+    <div class="mt-8 flex justify-center">
+        <nav class="inline-flex items-center rounded-full shadow-md overflow-hidden" aria-label="Pagination">
+            {% if users.has_prev %}
+            <a href="{{ url_for('admin_users', page=users.prev_num) }}" class="relative inline-flex items-center px-4 py-2 border-r border-gray-300 bg-white text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors">
+                <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
+                </svg>
+                <span class="ml-1">上一页</span>
+            </a>
+            {% else %}
+            <span class="relative inline-flex items-center px-4 py-2 border-r border-gray-300 bg-gray-100 text-sm font-medium text-gray-400 cursor-not-allowed">
+                <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
+                </svg>
+                <span class="ml-1">上一页</span>
+            </span>
+            {% endif %}
+            
+            <div class="hidden md:flex">
+                {% for page_num in range(1, users.pages + 1) %}
+                    {% if page_num == users.page %}
+                    <span class="relative inline-flex items-center px-4 py-2 border-r border-gray-300 bg-black text-sm font-medium text-white">
+                        {{ page_num }}
+                    </span>
+                    {% else %}
+                    <a href="{{ url_for('admin_users', page=page_num) }}" class="relative inline-flex items-center px-4 py-2 border-r border-gray-300 bg-white text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors">
+                        {{ page_num }}
+                    </a>
+                    {% endif %}
+                {% endfor %}
+            </div>
+            
+            <div class="flex md:hidden">
+                <span class="relative inline-flex items-center px-4 py-2 border-r border-gray-300 bg-white text-sm font-medium text-gray-700">
+                    {{ users.page }} / {{ users.pages }}
+                </span>
+            </div>
+            
+            {% if users.has_next %}
+            <a href="{{ url_for('admin_users', page=users.next_num) }}" class="relative inline-flex items-center px-4 py-2 bg-white text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors">
+                <span class="mr-1">下一页</span>
+                <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+                </svg>
+            </a>
+            {% else %}
+            <span class="relative inline-flex items-center px-4 py-2 bg-gray-100 text-sm font-medium text-gray-400 cursor-not-allowed">
+                <span class="mr-1">下一页</span>
+                <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+                </svg>
+            </span>
+            {% endif %}
+        </nav>
+    </div>
+</div>
+{% endblock %} 

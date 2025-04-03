@@ -1,0 +1,20 @@
+version: '3.8'
+
+services:
+  feedback-platform:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "5000:5000"
+    volumes:
+      - feedback-data:/app/data
+    environment:
+      - SECRET_KEY=your-secure-secret-key
+      - FLASK_APP=app.py
+      - FLASK_ENV=production
+      - DB_DIR=/app/data
+    restart: unless-stopped
+
+volumes:
+  feedback-data: 
