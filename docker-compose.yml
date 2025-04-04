@@ -5,16 +5,41 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
+    image: feedback-platform:latest
+    container_name: feedback-platform
     ports:
       - "5000:5000"
     volumes:
       - feedback-data:/app/data
     environment:
-      - SECRET_KEY=your-secure-secret-key
+      - SECRET_KEY=${SECRET_KEY:-your-secure-secret-key}
       - FLASK_APP=app.py
       - FLASK_ENV=production
       - DB_DIR=/app/data
     restart: unless-stopped
+    networks:
+      - feedback-network
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 512M
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5000/"]
+      interval: 1m
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+networks:
+  feedback-network:
+    driver: bridge
 
 volumes:
-  feedback-data: 
+  feedback-data:
+    name: feedback-data 

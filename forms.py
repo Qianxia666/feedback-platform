@@ -33,6 +33,7 @@ class PostForm(FlaskForm):
 
 class CommentForm(FlaskForm):
     content = TextAreaField('评论', validators=[DataRequired(), Length(min=2, max=500)])
+    parent_id = StringField('回复评论ID', validators=[Optional()], render_kw={"style": "display: none;"})
     submit = SubmitField('发表评论')
 
 class EditProfileForm(FlaskForm):

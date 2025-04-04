@@ -13,7 +13,7 @@
     <!-- 反馈内容 -->
     <div class="bg-white rounded-xl shadow-md overflow-hidden mb-8 border border-gray-200 animate-fade-in animate-once {% if post.is_deleted %}border-red-300{% endif %}">
         <div class="border-b border-gray-200 px-6 py-4 flex justify-between items-center">
-            <h1 class="text-2xl md:text-3xl font-bold text-gray-900 flex items-center">
+            <h1 class="text-2xl md:text-3xl font-bold text-gray-900 flex items-center pl-4 border-l-4 border-gray-900">
                 {{ post.title }}
                 {% if post.is_deleted %}
                 <span class="bg-red-100 text-red-700 text-xs px-2 py-0.5 rounded ml-3 uppercase tracking-wider font-semibold">已删除</span>
@@ -21,11 +21,20 @@
                 {% if post.is_pinned %}
                 <span class="bg-yellow-100 text-yellow-700 text-xs px-2 py-0.5 rounded ml-3 uppercase tracking-wider font-semibold">置顶</span>
                 {% endif %}
+                {% if post.is_tourist_post and post.is_approved == False %}
+                <span class="bg-red-100 text-red-700 text-xs px-2 py-0.5 rounded ml-3 uppercase tracking-wider font-semibold">已阻止</span>
+                {% endif %}
+                {% if post.is_tourist_post and post.is_approved is none %}
+                <span class="bg-yellow-100 text-yellow-700 text-xs px-2 py-0.5 rounded ml-3 uppercase tracking-wider font-semibold">待审核</span>
+                {% endif %}
+                {% if has_accepted_comment %}
+                <span class="bg-green-100 text-green-700 text-xs px-2 py-0.5 rounded ml-3 uppercase tracking-wider font-semibold">已解决</span>
+                {% endif %}
             </h1>
             
             <div class="flex space-x-2">
                 {% if post.is_deleted and (current_user.is_admin or current_user.is_sub_admin) %}
-                <a href="{{ url_for('restore_post', post_id=post.id) }}" class="inline-flex items-center px-3 py-2 bg-green-50 text-green-700 hover:bg-green-100 rounded-lg transition-colors text-sm border border-green-200">
+                <a href="{{ url_for('restore_post', post_id=post.id) }}" class="inline-flex items-center px-3 py-2 bg-gray-50 text-gray-700 hover:bg-gray-100 rounded-lg transition-colors text-sm border border-gray-200">
                     <svg class="h-4 w-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>
                     </svg>
@@ -33,7 +42,7 @@
                 </a>
                 {% endif %}
                 
-                {% if not post.is_deleted and current_user.is_authenticated and (current_user.is_admin or current_user.is_sub_admin) %}
+                {% if not post.is_deleted and (current_user.is_admin or current_user.is_sub_admin) %}
                     {% if post.is_pinned %}
                     <form method="post" action="{{ url_for('unpin_post', post_id=post.id) }}" class="inline">
                         <button type="submit" class="inline-flex items-center px-3 py-2 bg-gray-50 text-gray-700 hover:bg-gray-100 rounded-lg transition-colors text-sm border border-gray-200">
@@ -45,9 +54,9 @@
                     </form>
                     {% else %}
                     <form method="post" action="{{ url_for('pin_post', post_id=post.id) }}" class="inline">
-                        <button type="submit" class="inline-flex items-center px-3 py-2 bg-yellow-50 text-yellow-700 hover:bg-yellow-100 rounded-lg transition-colors text-sm border border-yellow-200">
+                        <button type="submit" class="inline-flex items-center px-3 py-2 bg-gray-50 text-gray-700 hover:bg-gray-100 rounded-lg transition-colors text-sm border border-gray-200">
                             <svg class="h-4 w-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 15l7-7 7 7"></path>
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
                             </svg>
                             置顶反馈
                         </button>
@@ -56,24 +65,27 @@
                 {% endif %}
             </div>
         </div>
-        <div class="p-6 md:p-8">
-            <div class="flex flex-col sm:flex-row sm:justify-between sm:items-center mb-8 pb-6 border-b border-gray-100">
-                <div class="flex items-center mb-3 sm:mb-0">
-                    <div class="w-10 h-10 rounded-full bg-gray-200 flex items-center justify-center text-gray-700 font-semibold text-sm mr-3">
-                        {{ post.user.username[0] | upper }}
-                    </div>
-                    <div>
-                        <a href="{{ url_for('user_profile', username=post.user.username) }}" class="flex items-center group">
+        
+        <div class="px-6 py-6">
+            <div class="flex justify-between mb-6">
+                <div class="flex items-center">
+                    <div class="w-10 h-10 rounded-full bg-gray-200 flex items-center justify-center text-gray-700 font-semibold text-sm mr-3 flex-shrink-0">
+                    {{ post.user.username[0] | upper }}
+                </div>
+                <div>
+                        <a href="{{ url_for('user_profile', username=post.user.username) }}" class="flex items-center text-gray-900 font-medium hover:text-black mb-1 group">
                             <div class="flex items-center">
                                 {% if post.user.is_banned %}
-                                <span class="bg-red-600 text-white text-xs px-2 py-0.5 rounded mr-2 uppercase tracking-wider font-semibold">已封禁</span>
+                                <span class="bg-red-600 text-white text-xs px-1.5 py-0.5 rounded mr-2 uppercase tracking-wider font-semibold">已封禁</span>
                                 {% endif %}
                                 {% if post.user.is_admin %}
-                                <span class="bg-black text-white text-xs px-2 py-0.5 rounded mr-2 uppercase tracking-wider font-semibold">管理员</span>
+                                <span class="bg-black text-white text-xs px-1.5 py-0.5 rounded mr-2 uppercase tracking-wider font-semibold">管理员</span>
                                 {% elif post.user.is_sub_admin %}
-                                <span class="bg-black text-white text-xs px-2 py-0.5 rounded mr-2 uppercase tracking-wider font-semibold">管理员</span>
+                                <span class="bg-black text-white text-xs px-1.5 py-0.5 rounded mr-2 uppercase tracking-wider font-semibold">管理员</span>
+                                {% elif post.user.username == 'tourist' %}
+                                <span class="bg-yellow-100 text-yellow-800 text-xs px-1.5 py-0.5 rounded mr-2 uppercase tracking-wider font-semibold">游客</span>
                                 {% endif %}
-                                <span class="text-gray-900 font-medium group-hover:text-black transition-colors">{{ post.user.username }}</span>
+                                <span class="group-hover:underline">{{ post.user.username }}</span>
                             </div>
                         </a>
                         <p class="text-xs text-gray-500">
@@ -90,14 +102,16 @@
                     {% endif %}
                 
                     {% if not post.is_deleted and (current_user.id == post.user_id or current_user.is_admin or current_user.is_sub_admin) %}
+                    {% if current_user.username != 'tourist' or current_user.is_admin or current_user.is_sub_admin %}
                     <form method="post" action="{{ url_for('delete_post', post_id=post.id) }}" class="inline" onsubmit="return confirm('确定要删除这条反馈吗？');">
-                        <button type="submit" class="inline-flex items-center px-3 py-2 bg-red-50 text-red-700 hover:bg-red-100 rounded-lg transition-colors text-sm border border-red-200">
+                        <button type="submit" class="inline-flex items-center px-3 py-2 bg-gray-50 text-gray-700 hover:bg-gray-100 rounded-lg transition-colors text-sm border border-gray-200">
                             <svg class="h-4 w-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
                             </svg>
                             删除反馈
                         </button>
                     </form>
+                    {% endif %}
                     {% endif %}
                 </div>
             </div>
@@ -117,9 +131,78 @@
                     </div>
                 </div>
                 {% else %}
+                {% if has_accepted_comment %}
+                <div class="bg-green-50 border-l-4 border-green-500 p-4 rounded-r-lg mb-4">
+                    <div class="flex">
+                        <div class="flex-shrink-0">
+                            <svg class="h-5 w-5 text-green-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                            </svg>
+                        </div>
+                        <div class="ml-3">
+                            <p class="text-sm text-green-600">该问题已解决，请查看已采纳的回复</p>
+                        </div>
+                    </div>
+                </div>
+                {% endif %}
                 {{ post.content|nl2br }}
                 {% endif %}
             </div>
+            
+            <!-- 已采纳评论区域 -->
+            {% set has_accepted = false %}
+            {% set displayed_accepted = false %}
+            {% for comment in accepted_comments %}
+                {% if comment.is_accepted and not displayed_accepted %}
+                    {% set has_accepted = true %}
+                    {% set displayed_accepted = true %}
+                    
+                    <div class="bg-green-50 p-4 mb-6 rounded-lg">
+                        <div class="flex items-center justify-between mb-2">
+                            <h3 class="text-lg font-semibold text-green-700">
+                                <svg class="h-5 w-5 inline-block mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                                </svg>
+                                {% if comment.accepted_by_user %}由 {{ comment.accepted_by_user.username }} 采纳{% else %}已采纳{% endif %} {{ comment.user.username }} 的回复
+                            </h3>
+                            
+                            {% if current_user.is_authenticated and (current_user.id == post.user_id or current_user.is_admin or current_user.is_sub_admin) %}
+                            <a href="{{ url_for('cancel_accept_comment', id=comment.id) }}" class="text-xs text-gray-600 hover:text-black bg-gray-50 px-3 py-1.5 rounded-md flex items-center transition-colors duration-200 border border-gray-200 h-7">
+                                <svg class="h-3 w-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                                </svg>
+                                取消采纳
+                            </a>
+                            {% endif %}
+                        </div>
+                        <div class="flex items-center mb-2">
+                            <div class="w-8 h-8 rounded-full bg-green-200 flex items-center justify-center text-green-700 font-semibold text-sm mr-2 flex-shrink-0">
+                                {{ comment.user.username[0] | upper }}
+                            </div>
+                            <div>
+                                <a href="{{ url_for('user_profile', username=comment.user.username) }}" class="text-green-700 font-medium hover:underline">{{ comment.user.username }}</a>
+                                <p class="text-xs text-gray-500 mt-1">
+                                    {% if comment.created_at %}{{ comment.created_at|format_datetime('%Y-%m-%d %H:%M') }}{% else %}未知时间{% endif %}
+                                </p>
+                            </div>
+                        </div>
+                        <div class="text-green-700">
+                            {% if comment.parent %}
+                            <div class="text-blue-600 font-medium text-sm mb-1">回复 {{ comment.parent.user.username }}:</div>
+                            {% endif %}
+                            {{ comment.content|nl2br }}
+                        </div>
+                    </div>
+                {% elif comment.is_accepted and not has_accepted %}
+                    {% set has_accepted = true %}
+                {% endif %}
+            {% endfor %}
+            
+            {% if not has_accepted_comment %}
+                <div class="bg-gray-50 p-4 mb-6 rounded-lg text-center">
+                    <p class="text-gray-500">还没有评论被采纳</p>
+                </div>
+            {% endif %}
         </div>
     </div>
     
@@ -139,100 +222,164 @@
             </div>
             {% endif %}
         </div>
-        <div class="p-6 md:p-8">
-            {% if current_user.is_authenticated and not post.is_deleted and not current_user.is_banned %}
-            <form method="post" class="mb-10">
-                {{ form.hidden_tag() }}
-                <div class="mb-4">
-                    <label class="block text-sm font-medium text-gray-700 mb-2">写下您的评论</label>
-                    {{ form.content(class="w-full min-h-24 px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-black focus:border-black transition-colors resize-y", placeholder="分享您的想法...") }}
-                    {% for error in form.content.errors %}
-                        <p class="text-red-600 text-sm mt-1">{{ error }}</p>
-                    {% endfor %}
+        
+        <div class="p-6">
+            <!-- 评论表单 -->
+            {% if not post.is_deleted and current_user.is_authenticated %}
+            <div class="mb-8">
+                {% if current_user.username == 'tourist' and allow_tourist_comment != 'true' %}
+                <div class="bg-yellow-50 border-l-4 border-yellow-500 p-4 rounded-r-lg mb-4">
+                    <div class="flex">
+                        <div class="flex-shrink-0">
+                            <svg class="h-5 w-5 text-yellow-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                            </svg>
+                        </div>
+                        <div class="ml-3">
+                            <p class="text-sm text-yellow-700">管理员已禁止游客评论，请<a href="{{ url_for('register') }}" class="font-bold underline">注册账号</a>后参与讨论</p>
+                        </div>
+                    </div>
                 </div>
-                {{ form.submit(class="inline-flex items-center px-4 py-2 bg-black text-white hover:bg-gray-800 rounded-lg transition-colors shadow-sm") }}
-            </form>
-            {% elif post.is_deleted %}
-            <div class="flex items-start mb-10 p-5 bg-red-50 rounded-lg border border-red-200">
-                <svg class="w-6 h-6 mr-3 text-red-500 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-                </svg>
-                <div>
-                    <p class="text-red-700 mb-2">该反馈已被删除，无法添加新评论</p>
-                </div>
-            </div>
-            {% elif current_user.is_banned %}
-            <div class="flex items-start mb-10 p-5 bg-red-50 rounded-lg border border-red-200">
-                <svg class="w-6 h-6 mr-3 text-red-500 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-                </svg>
-                <div>
-                    <p class="text-red-700 mb-2">您的账号已被封禁，无法添加评论</p>
-                </div>
-            </div>
-            {% elif not current_user.is_authenticated %}
-            <div class="flex items-start mb-10 p-5 bg-gray-50 rounded-lg border border-gray-200">
-                <svg class="w-6 h-6 mr-3 text-gray-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-                </svg>
-                <div>
-                    <p class="text-gray-700 mb-2">您需要登录才能发表评论</p>
-                    <a href="{{ url_for('login', next=request.url) }}" class="inline-flex items-center text-sm font-medium text-black hover:underline">
-                        登录账号
-                        <svg class="ml-1 w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3"></path>
-                        </svg>
-                    </a>
-                </div>
+                {% else %}
+                <form method="post" action="{{ url_for('post', id=post.id) }}" id="commentForm">
+                    {{ form.hidden_tag() }}
+                    {{ form.parent_id }}
+                    <div id="replyingTo" class="mb-4 hidden bg-gray-50 p-3 rounded-lg border-l-4 border-gray-500">
+                        <div class="flex justify-between">
+                            <span class="text-sm text-gray-700">回复给: <span id="replyToUsername" class="font-medium"></span></span>
+                            <button type="button" id="cancelReply" class="text-xs text-gray-500 hover:text-red-500">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                                </svg>
+                            </button>
+                        </div>
+                    </div>
+                    <div class="mb-4">
+                        <label for="content" class="block text-sm font-medium text-gray-700 mb-1">添加评论</label>
+                        {{ form.content(class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-black focus:border-transparent transition duration-200", rows=3, placeholder="分享您的想法...") }}
+                        {% for error in form.content.errors %}
+                            <p class="text-red-600 text-xs mt-1">{{ error }}</p>
+                        {% endfor %}
+                    </div>
+                    <div>
+                        <button type="submit" class="inline-flex items-center px-4 py-2 bg-black text-white rounded-lg hover:bg-gray-800 transition-colors">
+                            <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"></path>
+                            </svg>
+                            发布评论
+                        </button>
+                    </div>
+                </form>
+                {% endif %}
             </div>
             {% endif %}
             
-            {% if comments %}
+            <!-- 评论列表 -->
+            {% if root_comments %}
                 <div class="space-y-8">
-                    {% for comment in comments %}
+                    {% for comment in root_comments %}
                     <div class="animate-fade-in animate-once {% if loop.index0 == 0 %}delay-200{% elif loop.index0 == 1 %}delay-300{% elif loop.index0 == 2 %}delay-400{% elif loop.index0 == 3 %}delay-500{% else %}delay-700{% endif %}">
                         <div class="flex items-start space-x-4">
                             <div class="w-10 h-10 rounded-full bg-gray-200 flex items-center justify-center text-gray-700 font-semibold text-sm flex-shrink-0">
                                 {{ comment.user.username[0] | upper }}
                             </div>
-                            <div class="flex-1 {% if comment.user.is_admin or comment.user.is_sub_admin %}bg-gray-50 border-l-2 border-black p-4 rounded-r-lg{% endif %} {% if comment.is_deleted %}border-red-300 bg-red-50{% endif %}">
+                            <div class="flex-1 {% if comment.is_accepted %}bg-green-50 border-l-2 border-green-500 p-4 rounded-r-lg{% elif comment.user.is_admin or comment.user.is_sub_admin %}bg-gray-50 border-l-2 border-black p-4 rounded-r-lg{% else %}bg-gray-50 p-4 rounded-lg{% endif %} {% if comment.is_deleted %}border-red-300 bg-red-50{% endif %}">
                                 <div class="flex items-center justify-between mb-2">
-                                    <div class="flex items-center">
-                                        <a href="{{ url_for('user_profile', username=comment.user.username) }}" class="font-medium text-gray-900 hover:text-black hover:underline flex items-center">
-                                            {% if comment.user.is_banned %}
-                                            <span class="bg-red-600 text-white text-xs px-2 py-0.5 rounded mr-2 uppercase tracking-wider font-semibold">已封禁</span>
-                                            {% endif %}
-                                            {% if comment.user.is_admin %}
-                                            <span class="bg-black text-white text-xs px-2 py-0.5 rounded mr-2 uppercase tracking-wider font-semibold">管理员</span>
-                                            {% elif comment.user.is_sub_admin %}
-                                            <span class="bg-black text-white text-xs px-2 py-0.5 rounded mr-2 uppercase tracking-wider font-semibold">管理员</span>
-                                            {% endif %}
-                                            {{ comment.user.username }}
-                                        </a>
-                                        <span class="text-gray-400 text-xs ml-2">{% if comment.created_at %}{{ comment.created_at|format_datetime('%Y-%m-%d %H:%M') }}{% else %}未知时间{% endif %}</span>
-                                        
-                                        {% if comment.is_deleted %}
-                                        <span class="bg-red-100 text-red-700 text-xs px-2 py-0.5 rounded-full ml-2">已删除</span>
-                                        {% endif %}
+                                    <div>
+                                        <div class="flex items-center justify-between mb-2">
+                                            <a href="{{ url_for('user_profile', username=comment.user.username) }}" class="flex items-center text-gray-900 font-medium hover:underline group">
+                                                <div class="flex items-center">
+                                                    {% if comment.user.is_banned %}
+                                                    <span class="bg-red-600 text-white text-xs px-1.5 py-0.5 rounded mr-2 uppercase tracking-wider font-semibold">已封禁</span>
+                                                    {% endif %}
+                                                    {% if comment.user.is_admin %}
+                                                    <span class="bg-black text-white text-xs px-1.5 py-0.5 rounded mr-2 uppercase tracking-wider font-semibold">管理员</span>
+                                                    {% elif comment.user.is_sub_admin %}
+                                                    <span class="bg-black text-white text-xs px-1.5 py-0.5 rounded mr-2 uppercase tracking-wider font-semibold">管理员</span>
+                                                    {% elif comment.user.username == 'tourist' %}
+                                                    <span class="bg-yellow-100 text-yellow-800 text-xs px-1.5 py-0.5 rounded mr-2 uppercase tracking-wider font-semibold">游客</span>
+                                                    {% endif %}
+                                                    <span>{{ comment.user.username }}</span>
+                                                </div>
+                                            </a>
+                                        </div>
+                                        <div class="text-xs text-gray-500">
+                                            {% if comment.created_at %}{{ comment.created_at|format_datetime('%Y-%m-%d %H:%M') }}{% else %}未知时间{% endif %}
+                                        </div>
                                     </div>
                                     
                                     <div class="flex space-x-2">
+                                        {% if comment.is_accepted %}
+                                        <span class="inline-flex items-center text-xs text-green-600">
+                                            <svg class="h-3 w-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                                            </svg>
+                                            已采纳
+                                        </span>
+                                        {% endif %}
+                                        
                                         {% if comment.is_deleted and (current_user.is_admin or current_user.is_sub_admin) %}
-                                        <a href="{{ url_for('restore_comment', id=comment.id) }}" class="text-xs text-green-600 hover:text-green-800 hover:underline">
+                                        <a href="{{ url_for('restore_comment', id=comment.id) }}" class="text-xs text-gray-600 hover:text-black bg-gray-50 px-3 py-1.5 rounded-md flex items-center transition-colors duration-200 border border-gray-200 h-7">
+                                            <svg class="h-3 w-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>
+                                            </svg>
                                             恢复
                                         </a>
                                         {% endif %}
                                         
-                                        {% if not comment.is_deleted and (current_user.id == comment.user_id or current_user.is_admin or current_user.is_sub_admin) %}
-                                        <a href="{{ url_for('delete_comment', id=comment.id) }}" class="text-xs text-red-600 hover:text-red-800 hover:underline" onclick="return confirm('确定要删除这条评论吗？');">
-                                            删除
-                                        </a>
+                                        {% if not comment.is_deleted %}
+                                            <!-- 统一按钮区域 -->
+                                            <!-- 回复按钮 -->
+                                            {% if current_user.is_authenticated and not post.is_deleted %}
+                                            <button type="button" class="reply-button text-xs text-gray-600 hover:text-black bg-gray-50 px-3 py-1.5 rounded-md flex items-center transition-colors duration-200 border border-gray-200 h-7" data-parent-id="{{ comment.id }}" data-username="{{ comment.user.username }}">
+                                                <svg class="h-3 w-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6"></path>
+                                                </svg>
+                                                回复
+                                            </button>
+                                            {% endif %}
+                                            
+                                            <!-- 采纳按钮 -->
+                                            {% if current_user.is_authenticated and (current_user.is_admin or current_user.is_sub_admin or current_user.id == post.user_id) and not comment.is_accepted %}
+                                            <a href="{{ url_for('accept_comment', id=comment.id) }}" class="text-xs text-gray-600 hover:text-black bg-gray-50 px-3 py-1.5 rounded-md flex items-center transition-colors duration-200 border border-gray-200 h-7">
+                                                <svg class="h-3 w-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                                                </svg>
+                                                采纳
+                                            </a>
+                                            {% endif %}
+                                            
+                                            <!-- 删除按钮 -->
+                                            {% if ((current_user.id == comment.user_id and current_user.username != 'tourist') or current_user.is_admin or current_user.is_sub_admin) %}
+                                            <a href="{{ url_for('delete_comment', id=comment.id) }}" class="text-xs text-gray-600 hover:text-black bg-gray-50 px-3 py-1.5 rounded-md flex items-center transition-colors duration-200 border border-gray-200 h-7" onclick="return confirm('确定要删除此评论吗？')">
+                                                <svg class="h-3 w-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
+                                                </svg>
+                                                删除
+                                            </a>
+                                            {% endif %}
                                         {% endif %}
                                     </div>
                                 </div>
-                                <div class="text-gray-700 {% if comment.is_deleted %}text-gray-500{% endif %}">
-                                    {% if comment.is_deleted and not (current_user.is_admin or current_user.is_sub_admin) %}
-                                    <p class="text-red-600 text-sm">该评论已被删除</p>
+                                
+                                <div class="text-gray-700 {% if comment.is_deleted %}text-gray-400{% endif %}">
+                                    {% if comment.is_deleted %}
+                                        {% if current_user.is_authenticated and (current_user.is_admin or current_user.is_sub_admin) %}
+                                        <div class="flex items-center mb-2">
+                                            <span class="bg-red-100 text-red-600 text-xs px-2 py-0.5 rounded mr-2">已删除</span>
+                                            <span class="text-xs text-gray-500">由 
+                                                {% if comment.deleted_by_user %}
+                                                {{ comment.deleted_by_user.username }}
+                                                {% else %}
+                                                未知用户
+                                                {% endif %} 
+                                                删除于 {% if comment.deleted_at %}{{ comment.deleted_at|format_datetime('%Y-%m-%d %H:%M') }}{% endif %}
+                                            </span>
+                                        </div>
+                                        {{ comment.content|nl2br }}
+                                        {% else %}
+                                        <div class="italic text-gray-400">此评论已被删除</div>
+                                        {% endif %}
                                     {% else %}
                                     {{ comment.content|nl2br }}
                                     {% endif %}
@@ -240,19 +387,290 @@
                             </div>
                         </div>
                     </div>
-                    {% if not loop.last %}<div class="border-t border-gray-100 my-6"></div>{% endif %}
+                    {% endfor %}
+                    
+                    <!-- 将所有回复以扁平结构显示 -->
+                    {% for comment in root_comments %}
+                        {% set comment_loop = loop %}
+                        {% if comment.replies %}
+                            {% for reply in comment.replies %}
+                            <div class="animate-fade-in animate-once delay-300 mt-4 ml-8">
+                                <div class="flex items-start space-x-4">
+                                    <div class="w-10 h-10 rounded-full bg-gray-200 flex items-center justify-center text-gray-700 font-semibold text-sm flex-shrink-0">
+                                        {{ reply.user.username[0] | upper }}
+                                    </div>
+                                    <div class="flex-1 {% if reply.is_accepted %}bg-green-50 border-l-2 border-green-500 p-4 rounded-r-lg{% elif reply.user.is_admin or reply.user.is_sub_admin %}bg-gray-50 border-l-2 border-black p-4 rounded-r-lg{% else %}bg-gray-50 p-4 rounded-lg{% endif %} {% if reply.is_deleted %}border-red-300 bg-red-50{% endif %}">
+                                        <div class="flex items-center justify-between mb-2">
+                                            <div>
+                                                <a href="{{ url_for('user_profile', username=reply.user.username) }}" class="flex items-center text-gray-900 font-medium hover:underline group">
+                                                    <div class="flex items-center">
+                                                        {% if reply.user.is_banned %}
+                                                        <span class="bg-red-600 text-white text-xs px-1.5 py-0.5 rounded mr-2 uppercase tracking-wider font-semibold">已封禁</span>
+                                                        {% endif %}
+                                                        {% if reply.user.is_admin %}
+                                                        <span class="bg-black text-white text-xs px-1.5 py-0.5 rounded mr-2 uppercase tracking-wider font-semibold">管理员</span>
+                                                        {% elif reply.user.is_sub_admin %}
+                                                        <span class="bg-black text-white text-xs px-1.5 py-0.5 rounded mr-2 uppercase tracking-wider font-semibold">管理员</span>
+                                                        {% elif reply.user.username == 'tourist' %}
+                                                        <span class="bg-yellow-100 text-yellow-800 text-xs px-1.5 py-0.5 rounded mr-2 uppercase tracking-wider font-semibold">游客</span>
+                                                        {% endif %}
+                                                        <span>{{ reply.user.username }}</span>
+                                                    </div>
+                                                </a>
+                                                <p class="text-xs text-gray-500 mt-1">
+                                                    {% if reply.created_at %}{{ reply.created_at|format_datetime('%Y-%m-%d %H:%M') }}{% else %}未知时间{% endif %}
+                                                </p>
+                                            </div>
+                                            
+                                            <div class="flex space-x-2">
+                                                {% if reply.is_accepted %}
+                                                <span class="inline-flex items-center text-xs text-green-600">
+                                                    <svg class="h-3 w-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                                                    </svg>
+                                                    已采纳
+                                                </span>
+                                                {% endif %}
+                                                
+                                                {% if reply.is_deleted and (current_user.is_admin or current_user.is_sub_admin) %}
+                                                <a href="{{ url_for('restore_comment', id=reply.id) }}" class="text-xs text-gray-600 hover:text-black bg-gray-50 px-3 py-1.5 rounded-md flex items-center transition-colors duration-200 border border-gray-200 h-7">
+                                                    <svg class="h-3 w-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>
+                                                    </svg>
+                                                    恢复
+                                                </a>
+                                                {% endif %}
+                                                
+                                                {% if not reply.is_deleted %}
+                                                    {% if current_user.is_authenticated and not post.is_deleted %}
+                                                    <button type="button" class="reply-button text-xs text-gray-600 hover:text-black bg-gray-50 px-3 py-1.5 rounded-md flex items-center transition-colors duration-200 border border-gray-200 h-7" data-parent-id="{{ reply.id }}" data-username="{{ reply.user.username }}">
+                                                        <svg class="h-3 w-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6"></path>
+                                                        </svg>
+                                                        回复
+                                                    </button>
+                                                    {% endif %}
+                                                    
+                                                    <!-- 采纳按钮 -->
+                                                    {% if current_user.is_authenticated and (current_user.is_admin or current_user.is_sub_admin or current_user.id == post.user_id) and not reply.is_accepted %}
+                                                    <a href="{{ url_for('accept_comment', id=reply.id) }}" class="text-xs text-gray-600 hover:text-black bg-gray-50 px-3 py-1.5 rounded-md flex items-center transition-colors duration-200 border border-gray-200 h-7">
+                                                        <svg class="h-3 w-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                                                        </svg>
+                                                        采纳
+                                                    </a>
+                                                    {% endif %}
+                                                    
+                                                    <!-- 删除按钮 -->
+                                                    {% if ((current_user.id == reply.user_id and current_user.username != 'tourist') or current_user.is_admin or current_user.is_sub_admin) %}
+                                                    <a href="{{ url_for('delete_comment', id=reply.id) }}" class="text-xs text-gray-600 hover:text-black bg-gray-50 px-3 py-1.5 rounded-md flex items-center transition-colors duration-200 border border-gray-200 h-7" onclick="return confirm('确定要删除此评论吗？')">
+                                                        <svg class="h-3 w-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
+                                                        </svg>
+                                                        删除
+                                                    </a>
+                                                    {% endif %}
+                                                {% endif %}
+                                            </div>
+                                        </div>
+                                        
+                                        <div class="text-sm text-gray-700 mt-1">
+                                            {% if reply.is_deleted %}
+                                                {% if current_user.is_authenticated and (current_user.is_admin or current_user.is_sub_admin) %}
+                                                <div class="flex items-center mb-1">
+                                                    <span class="bg-red-100 text-red-600 text-xs px-2 py-0.5 rounded mr-2">已删除</span>
+                                                    <span class="text-xs text-gray-500">由 
+                                                        {% if reply.deleted_by_user %}
+                                                        {{ reply.deleted_by_user.username }}
+                                                        {% else %}
+                                                        未知用户
+                                                        {% endif %} 
+                                                        删除于 {% if reply.deleted_at %}{{ reply.deleted_at|format_datetime('%Y-%m-%d %H:%M') }}{% endif %}
+                                                    </span>
+                                                </div>
+                                                {{ reply.content|nl2br }}
+                                                {% else %}
+                                                <div class="italic text-gray-400 text-xs">此评论已被删除</div>
+                                                {% endif %}
+                                            {% else %}
+                                            <div class="text-blue-600 font-medium text-sm mb-1">回复 {% if reply.parent %}{{ reply.parent.user.username }}{% else %}{{ comment.user.username }}{% endif %}:</div>
+                                            {{ reply.content|nl2br }}
+                                            {% endif %}
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <!-- 递归显示更深层次的回复为扁平结构 -->
+                            {% if reply.replies %}
+                                {% for nested_reply in reply.replies %}
+                                <div class="animate-fade-in animate-once delay-400 mt-4 ml-12">
+                                    <div class="flex items-start space-x-4">
+                                        <div class="w-10 h-10 rounded-full bg-gray-200 flex items-center justify-center text-gray-700 font-semibold text-sm flex-shrink-0">
+                                            {{ nested_reply.user.username[0] | upper }}
+                                        </div>
+                                        <div class="flex-1 {% if nested_reply.is_accepted %}bg-green-50 border-l-2 border-green-500 p-4 rounded-r-lg{% elif nested_reply.user.is_admin or nested_reply.user.is_sub_admin %}bg-gray-50 border-l-2 border-black p-4 rounded-r-lg{% else %}bg-gray-50 p-4 rounded-lg{% endif %} {% if nested_reply.is_deleted %}border-red-300 bg-red-50{% endif %}">
+                                            <div class="flex items-center justify-between mb-2">
+                                                <div>
+                                                    <a href="{{ url_for('user_profile', username=nested_reply.user.username) }}" class="flex items-center text-gray-900 font-medium hover:underline group">
+                                                        <div class="flex items-center">
+                                                            {% if nested_reply.user.is_banned %}
+                                                            <span class="bg-red-600 text-white text-xs px-1.5 py-0.5 rounded mr-2 uppercase tracking-wider font-semibold">已封禁</span>
+                                                            {% endif %}
+                                                            {% if nested_reply.user.is_admin %}
+                                                            <span class="bg-black text-white text-xs px-1.5 py-0.5 rounded mr-2 uppercase tracking-wider font-semibold">管理员</span>
+                                                            {% elif nested_reply.user.is_sub_admin %}
+                                                            <span class="bg-black text-white text-xs px-1.5 py-0.5 rounded mr-2 uppercase tracking-wider font-semibold">管理员</span>
+                                                            {% elif nested_reply.user.username == 'tourist' %}
+                                                            <span class="bg-yellow-100 text-yellow-800 text-xs px-1.5 py-0.5 rounded mr-2 uppercase tracking-wider font-semibold">游客</span>
+                                                            {% endif %}
+                                                            <span>{{ nested_reply.user.username }}</span>
+                                                        </div>
+                                                    </a>
+                                                    <p class="text-xs text-gray-500 mt-1">
+                                                        {% if nested_reply.created_at %}{{ nested_reply.created_at|format_datetime('%Y-%m-%d %H:%M') }}{% else %}未知时间{% endif %}
+                                                    </p>
+                                                </div>
+                                                
+                                                <div class="flex space-x-2">
+                                                    {% if nested_reply.is_accepted %}
+                                                    <span class="inline-flex items-center text-xs text-green-600">
+                                                        <svg class="h-3 w-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                                                        </svg>
+                                                        已采纳
+                                                    </span>
+                                                    {% endif %}
+                                                    
+                                                    {% if nested_reply.is_deleted and (current_user.is_admin or current_user.is_sub_admin) %}
+                                                    <a href="{{ url_for('restore_comment', id=nested_reply.id) }}" class="text-xs text-gray-600 hover:text-black bg-gray-50 px-3 py-1.5 rounded-md flex items-center transition-colors duration-200 border border-gray-200 h-7">
+                                                        <svg class="h-3 w-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>
+                                                        </svg>
+                                                        恢复
+                                                    </a>
+                                                    {% endif %}
+                                                    
+                                                    {% if not nested_reply.is_deleted %}
+                                                        {% if current_user.is_authenticated and not post.is_deleted %}
+                                                        <button type="button" class="reply-button text-xs text-gray-600 hover:text-black bg-gray-50 px-3 py-1.5 rounded-md flex items-center transition-colors duration-200 border border-gray-200 h-7" data-parent-id="{{ nested_reply.id }}" data-username="{{ nested_reply.user.username }}">
+                                                            <svg class="h-3 w-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6"></path>
+                                                            </svg>
+                                                            回复
+                                                        </button>
+                                                        {% endif %}
+                                                        
+                                                        <!-- 采纳按钮 -->
+                                                        {% if current_user.is_authenticated and (current_user.is_admin or current_user.is_sub_admin or current_user.id == post.user_id) and not nested_reply.is_accepted %}
+                                                        <a href="{{ url_for('accept_comment', id=nested_reply.id) }}" class="text-xs text-gray-600 hover:text-black bg-gray-50 px-3 py-1.5 rounded-md flex items-center transition-colors duration-200 border border-gray-200 h-7">
+                                                            <svg class="h-3 w-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                                                            </svg>
+                                                            采纳
+                                                        </a>
+                                                        {% endif %}
+                                                        
+                                                        <!-- 删除按钮 -->
+                                                        {% if ((current_user.id == nested_reply.user_id and current_user.username != 'tourist') or current_user.is_admin or current_user.is_sub_admin) %}
+                                                        <a href="{{ url_for('delete_comment', id=nested_reply.id) }}" class="text-xs text-gray-600 hover:text-black bg-gray-50 px-3 py-1.5 rounded-md flex items-center transition-colors duration-200 border border-gray-200 h-7" onclick="return confirm('确定要删除此评论吗？')">
+                                                            <svg class="h-3 w-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
+                                                            </svg>
+                                                            删除
+                                                        </a>
+                                                        {% endif %}
+                                                    {% endif %}
+                                                </div>
+                                            </div>
+                                            
+                                            <div class="text-sm text-gray-700 mt-1">
+                                                {% if nested_reply.is_deleted %}
+                                                    {% if current_user.is_authenticated and (current_user.is_admin or current_user.is_sub_admin) %}
+                                                    <div class="flex items-center mb-1">
+                                                        <span class="bg-red-100 text-red-600 text-xs px-2 py-0.5 rounded mr-2">已删除</span>
+                                                        <span class="text-xs text-gray-500">由 
+                                                            {% if nested_reply.deleted_by_user %}
+                                                            {{ nested_reply.deleted_by_user.username }}
+                                                            {% else %}
+                                                            未知用户
+                                                            {% endif %} 
+                                                            删除于 {% if nested_reply.deleted_at %}{{ nested_reply.deleted_at|format_datetime('%Y-%m-%d %H:%M') }}{% endif %}
+                                                        </span>
+                                                    </div>
+                                                    {{ nested_reply.content|nl2br }}
+                                                    {% else %}
+                                                    <div class="italic text-gray-400 text-xs">此评论已被删除</div>
+                                                    {% endif %}
+                                                {% else %}
+                                                <div class="text-blue-600 font-medium text-sm mb-1">回复 {% if nested_reply.parent %}{{ nested_reply.parent.user.username }}{% else %}{{ reply.user.username }}{% endif %}:</div>
+                                                {{ nested_reply.content|nl2br }}
+                                                {% endif %}
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                {% endfor %}
+                            {% endif %}
+                            {% endfor %}
+                        {% endif %}
                     {% endfor %}
                 </div>
             {% else %}
-                <div class="flex flex-col items-center justify-center py-12 text-center">
-                    <svg class="w-12 h-12 text-gray-300 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <div class="text-center py-10 text-gray-500">
+                    <svg class="w-12 h-12 mx-auto text-gray-300 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"></path>
                     </svg>
-                    <p class="text-gray-500">暂无评论</p>
-                    <p class="text-gray-400 text-sm mt-1">成为第一个评论的用户</p>
+                    <p class="text-lg font-medium">暂无评论</p>
+                    <p class="text-sm mt-1">成为第一个评论的用户吧！</p>
                 </div>
             {% endif %}
         </div>
     </div>
 </div>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const replyButtons = document.querySelectorAll('.reply-button');
+        const cancelReplyButton = document.getElementById('cancelReply');
+        const replyingToDiv = document.getElementById('replyingTo');
+        const replyToUsernameSpan = document.getElementById('replyToUsername');
+        const commentForm = document.getElementById('commentForm');
+        const parentIdField = document.querySelector('input[name="parent_id"]');
+        
+        if (!parentIdField) {
+            console.error('无法找到parent_id输入字段，请检查表单结构');
+            return;
+        }
+        
+        // 回复按钮点击事件
+        replyButtons.forEach(button => {
+            button.addEventListener('click', function() {
+                const parentId = this.getAttribute('data-parent-id');
+                const username = this.getAttribute('data-username');
+                
+                parentIdField.value = parentId;
+                replyToUsernameSpan.textContent = username;
+                replyingToDiv.classList.remove('hidden');
+                
+                // 滚动到评论表单
+                commentForm.scrollIntoView({ behavior: 'smooth' });
+                
+                // 聚焦到评论内容框
+                setTimeout(() => {
+                    const contentField = commentForm.querySelector('textarea[name="content"]');
+                    if (contentField) {
+                        contentField.focus();
+                    }
+                }, 500);
+            });
+        });
+        
+        // 取消回复按钮点击事件
+        cancelReplyButton.addEventListener('click', function() {
+            parentIdField.value = '';
+            replyingToDiv.classList.add('hidden');
+        });
+    });
+</script>
 {% endblock %} 

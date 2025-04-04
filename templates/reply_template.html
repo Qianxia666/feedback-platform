@@ -1,0 +1,50 @@
+{% if nested_reply.replies %}
+<div class="mt-2 pl-2 border-l-2 border-gray-100 space-y-2">
+    {% for deeper_reply in nested_reply.replies %}
+    <div class="{% if deeper_reply.is_deleted %}opacity-60{% endif %}">
+        <div class="flex items-start space-x-2">
+            <div class="w-4 h-4 rounded-full bg-gray-200 flex items-center justify-center text-gray-700 font-semibold text-xs flex-shrink-0">
+                {{ deeper_reply.user.username[0] | upper }}
+            </div>
+            <div class="flex-1">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <a href="{{ url_for('user_profile', username=deeper_reply.user.username) }}" class="font-medium text-gray-800 hover:underline text-sm">{{ deeper_reply.user.username }}</a>
+                        <span class="text-xs text-gray-500 ml-1">{{ deeper_reply.created_at|format_datetime('%Y-%m-%d %H:%M') }}</span>
+                    </div>
+                    
+                    <div class="flex space-x-1">
+                        {% if not deeper_reply.is_deleted %}
+                            {# 不再显示回复按钮，因为已经是第三层 #}
+                            
+                            {% if ((current_user.id == deeper_reply.user_id and current_user.username != 'tourist') or current_user.is_admin or current_user.is_sub_admin) %}
+                            <a href="{{ url_for('delete_comment', id=deeper_reply.id) }}" class="text-xs text-gray-600 hover:text-red-600 bg-gray-100 px-2 py-1 rounded-md flex items-center transition-colors duration-200" onclick="return confirm('确定要删除此评论吗？')">
+                                <svg class="h-2.5 w-2.5 mr-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
+                                </svg>
+                                删除
+                            </a>
+                            {% endif %}
+                        {% endif %}
+                    </div>
+                </div>
+                
+                <div class="text-sm text-gray-700 mt-1">
+                    {% if deeper_reply.is_deleted %}
+                    <div class="italic text-gray-400 text-xs">此评论已被删除</div>
+                    {% else %}
+                    {{ deeper_reply.content|nl2br }}
+                    {% endif %}
+                </div>
+                
+                {% if deeper_reply.replies and not deeper_reply.is_deleted %}
+                <div class="text-xs text-gray-500 mt-1">
+                    <span class="bg-gray-100 px-2 py-1 rounded-md">评论层级已达上限</span>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+{% endif %} 
