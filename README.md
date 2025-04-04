@@ -276,19 +276,19 @@ feedback-platform/
 
 # Feedback Platform
 
-A simple feedback collection and management platform based on Flask and SQLite, supporting user registration, feedback posting, comment interaction, and more.
+A simple feedback collection and management platform based on Flask and SQLite, supporting user registration, feedback submission, and interactive commenting.
 
-## Project Introduction
+## Project Overview
 
-This platform aims to provide a centralized system for collecting, managing, and interacting with feedback. Users can publish feedback, administrators can pin important feedback, and all users can engage in discussions through comments.
+This platform aims to provide a centralized system for collecting, managing, and interacting with feedback. Users can submit feedback, admins can pin important posts, and all users can engage in discussions through comments.
 
 ### Key Features
 
-- User System: Supports registration, login, and personal information management
-- Feedback Management: Publish, view, comment on, and delete feedback
-- Administration: User management, content moderation, pinning important feedback
-- Permission Control: Separation of admin, sub-admin, and regular user permissions
-- Guest Access: Support for guests to post feedback and comments without registration
+- User system: Registration, login, and profile management
+- Feedback management: Submission, viewing, commenting, and deletion
+- Administration: User management, content moderation, and pinning important feedbacks
+- Permission control: Separate permissions for admins, sub-admins, and regular users
+- Guest access: Option to post feedback and comments without registration
 
 ## Installation Guide
 
@@ -296,7 +296,7 @@ This platform aims to provide a centralized system for collecting, managing, and
 
 - Python 3.6+
 - SQLite3
-- Dependency packages:
+- Required packages:
   - Flask==2.3.3
   - Flask-Login==0.6.2
   - Flask-WTF==1.1.1
@@ -317,7 +317,7 @@ This platform aims to provide a centralized system for collecting, managing, and
    cd feedback-platform
    ```
 
-2. Create a virtual environment (optional but recommended):
+2. Create virtual environment (optional but recommended):
    ```
    python -m venv venv
    # Activate on Windows
@@ -331,104 +331,127 @@ This platform aims to provide a centralized system for collecting, managing, and
    pip install -r requirements.txt
    ```
 
-4. Launch the application:
+4. Launch application:
    ```
    python app.py
    ```
-   
-   The database will be automatically initialized on first launch.
+   The database will auto-initialize on first launch.
 
-5. Access the application:
+5. Access at:
    ```
    http://localhost:5000
    ```
 
-6. 查看日志：
+### Docker Deployment
+
+> **⚠️ Warning**: Docker deployment hasn't been thoroughly tested. Please validate in test environments before production use.
+
+#### Using Docker Compose (Recommended)
+
+1. Ensure Docker and Docker Compose are installed
+2. Clone repository:
+   ```
+   git clone https://github.com/yourusername/feedback-platform
+   cd feedback-platform
+   ```
+
+3. Build and start containers:
+   ```
+   docker-compose up -d
+   ```
+
+4. Access application:
+   ```
+   http://localhost:5000
+   ```
+
+5. View logs:
    ```
    docker-compose logs -f
    ```
 
-7. 停止应用：
+6. Stop application:
    ```
    docker-compose down
    ```
 
-#### Manual Docker Image Building
+#### Manual Docker Build
 
-1. Build the image:
+1. Build image:
    ```
    docker build -t feedback-platform .
    ```
 
-2. Run the container:
+2. Run container:
    ```
    docker run -d -p 5000:5000 -v feedback-data:/app/data -e SECRET_KEY=your-secure-key -e DB_DIR=/app/data --name feedback-platform feedback-platform
    ```
 
 #### Data Persistence
 
-Docker deployment uses volumes to ensure data persistence:
-- Database files are stored in the `/app/data` directory
-- The Docker volume `feedback-data` is mounted to this directory
-- Data will not be lost even if the container is recreated
+Docker deployment uses volumes for persistence:
+- Database stored in `/app/data`
+- Mounted via `feedback-data` volume
+- Data survives container recreation
 
 #### Environment Variables
 
-Environment variables that can be configured in docker-compose.yml:
+Configurable in docker-compose.yml:
 
-| Variable | Description | Default Value |
-|----------|-------------|---------------|
-| SECRET_KEY | Flask key for session security | your-secure-secret-key |
-| FLASK_APP | Flask application entry point | app.py |
-| FLASK_ENV | Running environment | production |
+| Variable | Description | Default |
+|---------|------------|---------|
+| SECRET_KEY | Flask secret key | your-secure-secret-key |
+| FLASK_APP | Entry point | app.py |
+| FLASK_ENV | Environment | production |
 | DB_DIR | Database directory | /app/data |
 
 ## User Guide
 
-### Default Admin Account
+### Default Accounts
 
-- Username: admin
-- Password: admin123
+- Admin account:
+  - Username: admin
+  - Password: admin
 
-Please change the default password immediately after first login!
+Change default password immediately after first login!
 
 ### User Roles
 
-- **Regular Users**: Can post feedback, comment, and manage their own content
-- **Sub-Administrators**: Can manage all feedback and comments, can pin important feedback
-- **Administrators**: Have full permissions, including user management and permission assignment
-- **Guests**: Can post feedback and comments without registration (requires admin approval)
+- **Regular Users**: Can post feedback, comment, and manage own content
+- **Sub-Admins**: Can manage all feedback and comments, pin important posts
+- **Admins**: Full permissions including user management
+- **Guests**: Can post without registration (subject to admin approval)
 
-### Main Features
+### Core Features
 
 1. **Feedback Management**
-   - Post Feedback: After logging in, click the "Post Feedback" button on the homepage
-   - Pin Feedback: Administrators can pin important feedback to the top
-   - Delete Feedback: Users can delete their own feedback, administrators can delete any feedback
-   - Restore Feedback: Administrators can restore deleted feedback
-   - Approve Feedback: Administrators can approve feedback posted by guests
+   - Submit feedback via "Post Feedback" button
+   - Pin important posts (admin)
+   - Delete feedback (owners or admins)
+   - Restore deleted feedback (admins)
+   - Moderate guest submissions (admins)
 
 2. **User Management**
-   - Personal Information: Users can modify their personal information and password
-   - User Management: Administrators can view all users and edit user information
-   - Permission Management: Administrators can promote regular users to sub-administrators
-   - User Banning: Administrators can ban users who violate rules and provide a reason
+   - Profile editing
+   - User administration (admins)
+   - Permission management (admins)
+   - User banning with reasons (admins)
 
 3. **Comment System**
-   - Post Comments: Users can comment on feedback
-   - Reply to Comments: Support for replying to specific comments
-   - Delete Comments: Users can delete their own comments, administrators can delete any comment
-   - Restore Comments: Administrators can restore deleted comments
-   - Approve Comments: Administrators can approve comments posted by guests
+   - Post comments
+   - Reply to specific comments
+   - Delete comments (owners or admins)
+   - Restore comments (admins)
+   - Moderate guest comments (admins)
 
 4. **Guest Features**
-   - Guest Feedback: Can post feedback without registration (requires admin approval)
-   - Guest Comments: Can post comments without registration (may require admin approval, depending on system settings)
-   - Guest Login: Can use guest account to directly log in to experience the system
+   - Post feedback without registration
+   - Comment without registration
+   - Guest login option
 
 5. **System Settings**
-   - Platform Name: Administrators can customize the platform display name
-   - Guest Permissions: Administrators can control whether guests can post content and whether approval is required
+   - Platform name customization
+   - Guest permissions configuration
 
 ## Technical Architecture
 
@@ -442,70 +465,82 @@ Please change the default password immediately after first login!
 
 ```
 feedback-platform/
-├── app.py                # Main application entry
-├── config.py             # Configuration file
-├── models.py             # Database models (with initialization)
-├── forms.py              # Form definitions
-├── feedback.db           # SQLite database file
-├── requirements.txt      # Dependencies list
-├── Dockerfile            # Docker build file
-├── docker-compose.yml    # Docker Compose configuration
-├── .dockerignore         # Docker build ignore file
-├── static/               # Static resources
-│   ├── css/              # Style files
-│   ├── js/               # JavaScript files
-│   └── images/           # Image resources
+├── app.py                # Main application
+├── config.py             # Configuration
+├── models.py             # DB models
+├── forms.py              # Forms
+├── feedback.db           # SQLite DB
+├── requirements.txt      # Dependencies
+├── Dockerfile            # Docker build
+├── docker-compose.yml    # Docker Compose
+├── .dockerignore         # Docker exclusions
+├── static/               # Static assets
+│   ├── css/              # Styles
+│   ├── js/               # JavaScript
+│   └── images/           # Images
 └── templates/            # HTML templates
 ```
 
-## Local Development Guide
+## Development Guide
 
 1. **Database Operations**
-   - Database files are located in the project root directory: `feedback.db`
-   - Use tools like SQLite Browser to view and edit the database
-   - Database structure is defined in `models.py`
+   - Database file: `feedback.db`
+   - Use SQLite Browser for inspection
+   - Schema defined in `models.py`
 
-2. **New Feature Development**
-   - Frontend templates are in the `templates/` directory
-   - Static resources are in the `static/` directory
-   - Application logic is in `app.py`
-   - Form definitions are in `forms.py`
+2. **Feature Development**
+   - Templates in `templates/`
+   - Static assets in `static/`
+   - Application logic in `app.py`
+   - Forms in `forms.py`
 
-3. **Debugging Tips**
-   - Launch in development mode: `FLASK_ENV=development python app.py`
-   - Set environment variable for detailed logs: `FLASK_DEBUG=1`
+3. **Debugging**
+   - Development mode: `FLASK_ENV=development python app.py`
+   - Verbose logging: `FLASK_DEBUG=1`
 
-## Production Environment Considerations
+## Production Considerations
 
-1. **Security Settings**:
-   - Change the SECRET_KEY in docker-compose.yml to a strong password
-   - Use HTTPS reverse proxy to protect the application (Nginx can be configured)
-   - Ensure important paths like `/admin` are protected appropriately
+1. **Security**
+   - Set strong SECRET_KEY in docker-compose.yml
+   - Use HTTPS via reverse proxy (e.g., Nginx)
+   - Protect sensitive routes like `/admin`
 
-2. **Performance Optimization**:
-   - For large-scale deployments, consider using a more powerful database (like PostgreSQL)
-   - Consider using Redis to cache frequently accessed content
-   - Integrate CDN for accelerated static resources
+2. **Performance**
+   - Consider PostgreSQL for large deployments
+   - Implement Redis for caching
+   - Use CDN for static assets
 
-3. **Backup Strategy**:
-   - Regularly backup the database files in the Docker volume
-   - Configure an automatic backup script:
+3. **Backups**
+   - Regularly back up Docker volumes
+   - Sample backup script:
      ```
      docker run --rm -v feedback-data:/data -v /backup:/backup alpine sh -c "tar -czf /backup/feedback-db-$(date +%Y%m%d).tar.gz /data"
      ```
-   - Suggest keeping backups for at least 7 days
+   - Maintain at least 7 days of backups
 
-## Common Questions and Answers
+## FAQ
 
-1. **Q: How to reset the admin password?**
-   A: Directly edit the user table in the database or access the User model in Python shell to set a new password.
+1. **Q: How to reset admin password?**
+   A: Edit user table directly or reset via Python shell.
 
-2. **Q: Where are guest-posted content reviewed?**
-   A: Administrators can review guest-posted feedback on the homepage through the "View Pending Content" option.
+2. **Q: Where to moderate guest submissions?**
+   A: Via "Pending Content" section on admin dashboard.
 
-3. **Q: How to adjust the number of feedback displayed per page?**
-   A: Modify the POSTS_PER_PAGE parameter in config.py.
+3. **Q: How to adjust posts per page?**
+   A: Modify POSTS_PER_PAGE in config.py.
 
 ## Developer Information
 
-This platform is a learning/demonstration project. Suggestions for improvement and code contributions are welcome. To contribute, please fork this project and submit a Pull Request. 
+This is a learning/demonstration project. Contributions via Pull Requests are welcome.
+
+## Changelog
+
+- **v1.0.0** (2023-04-01): Initial release
+  - Basic user system
+  - Feedback management
+  - Comment system
+
+- **v1.1.0** (2023-04-03): Enhancements
+  - Guest access mode
+  - Content moderation
+  - Docker support
