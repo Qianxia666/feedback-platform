@@ -1,6 +1,9 @@
-from flask import Flask, render_template, flash, redirect, url_for, request, abort
+from flask import Flask, render_template, flash, redirect, url_for, request, abort, session
 from flask_login import LoginManager, login_user, logout_user, login_required, current_user
-from werkzeug.urls import url_parse
+try:
+    from werkzeug.urls import url_parse
+except ImportError:
+    from urllib.parse import urlparse as url_parse
 from config import Config
 from models import User, Post, Comment, init_db, get_db_connection, ActivityLog, Settings
 from forms import LoginForm, RegisterForm, PostForm, CommentForm, EditProfileForm, AdminEditProfileForm, BanUserForm
@@ -24,18 +27,49 @@ def create_app(config_class=Config):
     def format_datetime(value, format='%Y-%m-%d %H:%M:%S'):
         if value is None:
             return ''
-        if isinstance(value, str):
-            try:
-                from datetime import datetime
-                # 尝试将字符串解析为datetime
-                value = datetime.fromisoformat(value.replace('Z', '+00:00'))
-            except (ValueError, AttributeError):
-                # 如果无法解析，直接返回字符串
-                return value
+
         try:
+            from datetime import datetime, timezone as dt_timezone
+            from models import Settings
+            import pytz
+
+            # 获取系统时区设置
+            timezone_setting = Settings.get('timezone', 'Asia/Shanghai')
+            target_tz = pytz.timezone(timezone_setting)
+
+            # 处理字符串时间
+            if isinstance(value, str):
+                try:
+                    # 尝试解析ISO格式时间
+                    if 'T' in value:
+                        value = datetime.fromisoformat(value.replace('Z', '+00:00'))
+                    else:
+                        # 尝试解析数据库格式时间
+                        value = datetime.strptime(value, '%Y-%m-%d %H:%M:%S')
+                        # 假设数据库时间是UTC
+                        value = value.replace(tzinfo=dt_timezone.utc)
+                except (ValueError, AttributeError):
+                    return value
+
+            # 如果没有时区信息，假设是UTC
+            if hasattr(value, 'tzinfo') and value.tzinfo is None:
+                value = value.replace(tzinfo=dt_timezone.utc)
+
+            # 转换到目标时区
+            if hasattr(value, 'astimezone'):
+                value = value.astimezone(target_tz)
+
             return value.strftime(format)
-        except (AttributeError, ValueError):
-            return str(value)
+
+        except (AttributeError, ValueError, ImportError, Exception):
+            # 如果转换失败，使用原始格式
+            try:
+                if hasattr(value, 'strftime'):
+                    return value.strftime(format)
+                else:
+                    return str(value)
+            except (AttributeError, ValueError):
+                return str(value)
     
     # 初始化数据库
     init_db()
@@ -184,11 +218,24 @@ def create_app(config_class=Config):
                 posts = Post.get_all(page=page, per_page=app.config['POSTS_PER_PAGE'], include_deleted=include_deleted)
                 return render_template('index.html', title='反馈广场', posts=posts, include_deleted=include_deleted, include_pending=include_pending, pending_count=pending_count)
     
+
+
     # 登录
     @app.route('/login', methods=['GET', 'POST'])
     def login():
         if current_user.is_authenticated:
             return redirect(url_for('index'))
+
+        # 清除重复的登录提示消息
+        messages = session.get('_flashes', [])
+        unique_messages = []
+        seen_messages = set()
+        for category, message in messages:
+            if message not in seen_messages:
+                unique_messages.append((category, message))
+                seen_messages.add(message)
+        session['_flashes'] = unique_messages
+
         form = LoginForm()
         if form.validate_on_submit():
             user = User.get_by_username(form.username.data)
@@ -200,11 +247,31 @@ def create_app(config_class=Config):
                 return redirect(url_for('login'))
             login_user(user, remember=form.remember_me.data)
             next_page = request.args.get('next')
-            if not next_page or url_parse(next_page).netloc != '':
-                next_page = url_for('index')
+            try:
+                # 尝试使用 werkzeug 的 url_parse
+                if not next_page or url_parse(next_page).netloc != '':
+                    next_page = url_for('index')
+            except AttributeError:
+                # 如果是 urllib.parse.urlparse，使用不同的属性名
+                if not next_page or url_parse(next_page).netloc != '':
+                    next_page = url_for('index')
             flash(f'欢迎, {user.username}!')
             return redirect(next_page)
         return render_template('login.html', title='登录', form=form)
+
+    # 简单测试路由
+    @app.route('/simple-test')
+    def simple_test():
+        return '''
+        <html>
+        <head><title>简单测试</title></head>
+        <body>
+            <h1>简单测试页面</h1>
+            <p>如果您能看到这个页面，说明Flask应用正常运行</p>
+            <a href="/login">返回登录页面</a>
+        </body>
+        </html>
+        '''
     
     # 游客登录
     @app.route('/tourist-login')
@@ -1241,19 +1308,23 @@ def create_app(config_class=Config):
         if not current_user.is_admin:
             flash('只有管理员可以修改系统设置')
             return redirect(url_for('admin_dashboard'))
-        
+
         if request.method == 'POST':
             platform_name = request.form.get('platform_name', '反馈平台')
             Settings.set('platform_name', platform_name, '平台名称，显示在页面顶部和标题中')
-            
+
             # 处理游客登录控制
             allow_tourist = 'true' if request.form.get('allow_tourist') else 'false'
             Settings.set('allow_tourist', allow_tourist, '是否允许游客登录和发帖')
-            
+
             # 处理游客评论控制
             allow_tourist_comment = 'true' if request.form.get('allow_tourist_comment') else 'false'
             Settings.set('allow_tourist_comment', allow_tourist_comment, '是否允许游客评论帖子')
-            
+
+            # 处理时区设置
+            timezone_setting = request.form.get('timezone', 'Asia/Shanghai')
+            Settings.set('timezone', timezone_setting, '系统时区设置')
+
             # 记录活动
             ActivityLog.create_log(
                 user_id=current_user.id,
@@ -1262,26 +1333,73 @@ def create_app(config_class=Config):
                 target_id=0,
                 description=f'管理员 {current_user.username} 更新了系统设置'
             )
-            
+
             flash('系统设置已更新')
             return redirect(url_for('admin_dashboard'))
         
         platform_name = Settings.get('platform_name', '反馈平台')
         allow_tourist = Settings.get('allow_tourist', 'true')
         allow_tourist_comment = Settings.get('allow_tourist_comment', 'true')
+        timezone_setting = Settings.get('timezone', 'Asia/Shanghai')
         all_settings = Settings.get_all()
-        return render_template('admin/settings.html', 
-                              title='系统设置', 
-                              platform_name=platform_name, 
+        return render_template('admin/settings.html',
+                              title='系统设置',
+                              platform_name=platform_name,
                               allow_tourist=allow_tourist,
                               allow_tourist_comment=allow_tourist_comment,
+                              timezone_setting=timezone_setting,
                               all_settings=all_settings)
-    
+
+    # 数据库导出
+    @app.route('/admin/export-database')
+    @login_required
+    def export_database():
+        if not current_user.is_admin:
+            flash('只有管理员可以导出数据库')
+            return redirect(url_for('admin_dashboard'))
+
+        try:
+            from models import DB_PATH
+            import os
+            from flask import send_file
+            from datetime import datetime
+
+            # 检查数据库文件是否存在
+            if not os.path.exists(DB_PATH):
+                flash('数据库文件不存在')
+                return redirect(url_for('admin_settings'))
+
+            # 生成带时间戳的文件名
+            timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+            filename = f'feedback_backup_{timestamp}.db'
+
+            # 记录操作日志
+            ActivityLog.create_log(
+                user_id=current_user.id,
+                action='database_export',
+                target_type='system',
+                target_id=0,
+                description=f'管理员 {current_user.username} 导出了数据库'
+            )
+
+            return send_file(DB_PATH, as_attachment=True, download_name=filename)
+
+        except Exception as e:
+            flash(f'导出数据库时发生错误: {str(e)}')
+            return redirect(url_for('admin_settings'))
+
+    # 测试路由
+    @app.route('/test')
+    def test():
+        from forms import LoginForm
+        form = LoginForm()
+        return render_template('test.html', title='测试', form=form)
+
     # 错误处理
     @app.errorhandler(404)
     def not_found_error(error):
         return render_template('404.html'), 404
-    
+
     @app.errorhandler(500)
     def internal_error(error):
         return render_template('500.html'), 500

@@ -2,37 +2,37 @@
 
 {% block content %}
 <div class="max-w-6xl mx-auto">
-    <div class="mb-8">
-        <h1 class="text-3xl md:text-4xl font-bold text-gray-900 mb-2 tracking-tight relative pl-4 border-l-4 border-gray-900">
+    <!-- 平台名称显示 -->
+    {% if not include_deleted and not include_pending %}
+    <div class="mb-8 sm:mb-12 text-center">
+        <h1 class="platform-title text-4xl sm:text-5xl md:text-6xl font-bold text-gray-900 tracking-tight">
+            {{ platform_name }}
+        </h1>
+    </div>
+    {% endif %}
+
+    {% if include_deleted or include_pending %}
+    <div class="mb-8 sm:mb-12">
+        <h1 class="modern-title text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-bold mb-4 tracking-tight text-center">
             {% if include_deleted %}
             已删除反馈列表
-            <span class="bg-red-100 text-red-700 text-sm px-2 py-1 rounded-md ml-3">管理员视图</span>
+            <span class="modern-tag tag-rejected text-sm sm:text-base px-3 sm:px-4 py-1 sm:py-2 ml-3 block sm:inline mt-2 sm:mt-0">管理员视图</span>
             {% elif include_pending %}
             待审核反馈列表
-            <span class="bg-yellow-100 text-yellow-700 text-sm px-2 py-1 rounded-md ml-3">管理员视图</span>
-            {% else %}
-            反馈广场
+            <span class="modern-tag tag-pending text-sm sm:text-base px-3 sm:px-4 py-1 sm:py-2 ml-3 block sm:inline mt-2 sm:mt-0">管理员视图</span>
             {% endif %}
         </h1>
     </div>
-    
-    {% if current_user.is_authenticated and not include_deleted and not include_pending %}
-    <div class="mb-8 flex flex-wrap items-center gap-4">
-        <a href="{{ url_for('create_post') }}" class="inline-flex items-center px-6 py-3 rounded-full bg-black text-white hover:bg-gray-800 transition-all duration-300 shadow-md hover:shadow-xl transform hover:-translate-y-1 hover:scale-105">
-            <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
-            </svg>
-            发布新反馈
-        </a>
-        
-        {% if current_user.username == 'tourist' %}
-        <div class="bg-yellow-50 text-yellow-800 border border-yellow-300 px-4 py-2 rounded-full inline-flex items-center">
-            <svg class="w-5 h-5 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+    {% endif %}
+
+    {% if current_user.username == 'tourist' %}
+    <div class="mb-8">
+        <div class="bg-yellow-50 text-yellow-800 border border-yellow-300 px-3 sm:px-4 py-2.5 sm:py-2 rounded-lg sm:rounded-full flex items-start sm:items-center text-sm">
+            <svg class="w-4 h-4 sm:w-5 sm:h-5 mr-1.5 sm:mr-1 flex-shrink-0 mt-0.5 sm:mt-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
             </svg>
-            <span>您当前以游客身份登录，发布的内容需要审核后才能显示</span>
+            <span class="leading-relaxed">您当前以游客身份登录，发布的内容需要审核后才能显示</span>
         </div>
-        {% endif %}
     </div>
     {% elif include_deleted and current_user.is_authenticated and (current_user.is_admin or current_user.is_sub_admin) %}
     <div class="mb-8">
@@ -75,73 +75,99 @@
         </div>
     </div>
     {% elif not current_user.is_authenticated %}
-    <div class="bg-gradient-to-r from-gray-100 to-gray-200 border-l-4 border-black p-5 mb-8 rounded-r-2xl shadow-md">
+    <div class="bg-gradient-to-r from-gray-100 to-gray-200 border-l-4 p-5 mb-8 rounded-r-2xl shadow-md" style="border-left-color: #4589EB;">
         <div class="flex items-start">
             <svg class="w-6 h-6 mr-3 text-gray-800" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
             </svg>
             <div>
-                <p class="text-gray-800">请 <a href="{{ url_for('login') }}" class="text-black font-semibold underline hover:no-underline">登录</a> 后发布反馈问题</p>
+                <p class="text-gray-800">请 <a href="{{ url_for('login') }}" class="font-semibold underline hover:no-underline" style="color: #4589EB;">登录</a> 后发布反馈问题</p>
             </div>
         </div>
     </div>
     {% endif %}
-    
+
+
+
     {% if posts.items %}
-    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
         {% for post in posts.items %}
-        <div class="bg-white rounded-2xl shadow-md hover:shadow-xl transition-all duration-300 overflow-hidden border border-gray-200 animate-fade-in animate-once transform hover:scale-[1.02] {% if post.is_deleted %}border-red-300{% endif %}">
-            <div class="p-6">
+        <div class="bg-white rounded-xl sm:rounded-2xl shadow-md hover:shadow-xl transition-all duration-300 overflow-hidden border border-gray-200 animate-fade-in animate-once transform hover:scale-[1.02] {% if post.is_deleted %}border-red-300{% endif %} flex flex-col h-full">
+            <div class="p-4 sm:p-6 flex flex-col flex-grow">
                 <div class="flex items-center mb-3">
-                    <div class="w-8 h-8 rounded-full bg-gray-200 flex items-center justify-center text-gray-700 font-semibold text-sm mr-3 flex-shrink-0">
+                    <div class="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-gray-200 flex items-center justify-center text-gray-700 font-semibold text-xs sm:text-sm mr-2 sm:mr-3 flex-shrink-0">
                         {{ post.user.username[0] | upper }}
                     </div>
-                    <div>
+                    <div class="min-w-0 flex-1">
                         <a href="{{ url_for('user_profile', username=post.user.username) }}" class="flex items-center group">
-                            <div class="flex items-center">
+                            <div class="flex items-center flex-wrap gap-1 sm:gap-2">
                                 {% if post.user.is_banned %}
-                                <span class="bg-red-600 text-white text-xs px-1.5 py-0.5 rounded mr-2 uppercase tracking-wider font-semibold">已封禁</span>
+                                <span class="bg-red-600 text-white text-xs px-1 sm:px-1.5 py-0.5 rounded uppercase tracking-wider font-semibold">已封禁</span>
                                 {% endif %}
                                 {% if post.user.is_admin %}
-                                <span class="bg-black text-white text-xs px-1.5 py-0.5 rounded mr-2 uppercase tracking-wider font-semibold">管理员</span>
+                                <span class="text-white text-xs px-1 sm:px-1.5 py-0.5 rounded uppercase tracking-wider font-semibold" style="background-color: #4589EB;">管理员</span>
                                 {% elif post.user.is_sub_admin %}
-                                <span class="bg-black text-white text-xs px-1.5 py-0.5 rounded mr-2 uppercase tracking-wider font-semibold">管理员</span>
+                                <span class="text-white text-xs px-1 sm:px-1.5 py-0.5 rounded uppercase tracking-wider font-semibold" style="background-color: #4589EB;">管理员</span>
                                 {% elif post.user.username == 'tourist' %}
-                                <span class="bg-yellow-100 text-yellow-800 text-xs px-1.5 py-0.5 rounded mr-2 uppercase tracking-wider font-semibold">游客</span>
+                                <span class="bg-yellow-100 text-yellow-800 text-xs px-1 sm:px-1.5 py-0.5 rounded uppercase tracking-wider font-semibold">游客</span>
                                 {% endif %}
-                                <span class="text-gray-900 font-medium group-hover:text-black transition-colors">{{ post.user.username }}</span>
+                                <span class="text-gray-900 font-medium group-hover:text-black transition-colors text-sm sm:text-base truncate">{{ post.user.username }}</span>
                             </div>
                         </a>
-                        <p class="text-xs text-gray-500">
-                            {% if post.created_at %}{{ post.created_at|format_datetime('%Y-%m-%d %H:%M') }}{% else %}未知时间{% endif %}
+                        <p class="text-xs text-gray-500 mt-0.5">
+                            {% if post.created_at %}{{ post.created_at|format_datetime('%m-%d %H:%M') }}{% else %}未知时间{% endif %}
                         </p>
                     </div>
                 </div>
                 
-                <h2 class="text-xl font-bold text-gray-900 mb-2 line-clamp-2 hover:text-black transition-colors">
-                    <a href="{{ url_for('post', id=post.id) }}" class="hover:underline flex items-center">
-                        {{ post.title }}
-                        {% if post.is_deleted %}
-                        <span class="bg-red-100 text-red-700 text-xs px-2 py-0.5 rounded ml-3 uppercase tracking-wider font-semibold">已删除</span>
-                        {% endif %}
-                        {% if post.is_pinned %}
-                        <span class="bg-yellow-100 text-yellow-700 text-xs px-2 py-0.5 rounded ml-3 uppercase tracking-wider font-semibold">置顶</span>
-                        {% endif %}
-                        {% if post.is_tourist_post and post.is_approved == False %}
-                        <span class="bg-red-100 text-red-700 text-xs px-2 py-0.5 rounded ml-3 uppercase tracking-wider font-semibold">已阻止</span>
-                        {% endif %}
-                        {% if post.is_tourist_post and post.is_approved is none %}
-                        <span class="bg-yellow-100 text-yellow-700 text-xs px-2 py-0.5 rounded ml-3 uppercase tracking-wider font-semibold">待审核</span>
-                        {% endif %}
+                <h2 class="text-lg sm:text-xl font-bold text-gray-900 mb-2 line-clamp-2 hover:text-black transition-colors">
+                    <a href="{{ url_for('post', id=post.id) }}" class="hover:underline block">
+                        <span class="block">{{ post.title }}</span>
+                        <div class="flex flex-wrap gap-1 sm:gap-2 mt-1">
+                            {% if post.is_deleted %}
+                            <span class="bg-red-100 text-red-700 text-xs px-1.5 sm:px-2 py-0.5 rounded uppercase tracking-wider font-semibold">已删除</span>
+                            {% endif %}
+                            {% if post.is_pinned %}
+                            <span class="bg-yellow-100 text-yellow-700 text-xs px-1.5 sm:px-2 py-0.5 rounded uppercase tracking-wider font-semibold">置顶</span>
+                            {% endif %}
+                            {% if post.is_tourist_post and post.is_approved == False %}
+                            <span class="bg-red-100 text-red-700 text-xs px-1.5 sm:px-2 py-0.5 rounded uppercase tracking-wider font-semibold">已阻止</span>
+                            {% endif %}
+                            {% if post.is_tourist_post and post.is_approved is none %}
+                            <span class="bg-yellow-100 text-yellow-700 text-xs px-1.5 sm:px-2 py-0.5 rounded uppercase tracking-wider font-semibold">待审核</span>
+                            {% endif %}
+                            {% if post.has_accepted_comment %}
+                            <span class="bg-green-100 text-green-700 text-xs px-1.5 sm:px-2 py-0.5 rounded uppercase tracking-wider font-semibold flex items-center">
+                                <svg class="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                                </svg>
+                                已解决
+                            </span>
+                            {% endif %}
+                        </div>
                     </a>
                 </h2>
-                
-                <p class="text-gray-700 mb-4 line-clamp-3">{{ post.content[:150] }}{% if post.content|length > 150 %}...{% endif %}</p>
-                
-                <div class="flex justify-between items-center">
-                    <a href="{{ url_for('post', id=post.id) }}" class="inline-flex items-center text-sm font-medium text-gray-900 hover:text-black group">
+
+                <p class="text-gray-700 mb-3 sm:mb-4 line-clamp-3 text-sm sm:text-base leading-relaxed flex-grow">{{ post.content[:120] }}{% if post.content|length > 120 %}...{% endif %}</p>
+
+                <div class="flex justify-between items-center pt-2 border-t border-gray-100 mt-auto">
+                    <div class="flex items-center space-x-4 text-xs sm:text-sm text-gray-500">
+                        <span class="flex items-center">
+                            <svg class="w-3 h-3 sm:w-4 sm:h-4 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"></path>
+                            </svg>
+                            {{ post.total_comment_count }} 条评论
+                        </span>
+                        <span class="flex items-center">
+                            <svg class="w-3 h-3 sm:w-4 sm:h-4 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                            </svg>
+                            {{ post.created_at|format_datetime('%m-%d %H:%M') }}
+                        </span>
+                    </div>
+                    <a href="{{ url_for('post', id=post.id) }}" class="inline-flex items-center text-xs sm:text-sm font-medium transition-all duration-200 group" style="color: #4589EB;">
                         查看详情
-                        <svg class="ml-1 w-4 h-4 group-hover:translate-x-1.5 transition-transform duration-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <svg class="ml-1.5 w-3 h-3 sm:w-4 sm:h-4 group-hover:translate-x-1 transition-transform duration-200" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3"></path>
                         </svg>
                     </a>
@@ -152,61 +178,43 @@
     </div>
     
     <!-- 分页 -->
-    <div class="mt-12 flex justify-center">
-        <nav class="inline-flex items-center rounded-full shadow-md overflow-hidden" aria-label="Pagination">
+    <div class="mt-8 sm:mt-12 flex justify-center px-2">
+        <nav class="modern-pagination" aria-label="Pagination">
             {% if posts.has_prev %}
-            <a href="{{ url_for('index', page=posts.prev_num, include_deleted=include_deleted, include_pending=include_pending) }}" class="relative inline-flex items-center px-4 py-2 border-r border-gray-300 bg-white text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors">
-                <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <a href="{{ url_for('index', page=posts.prev_num, include_deleted=include_deleted, include_pending=include_pending) }}" class="pagination-btn pagination-btn-prev">
+                <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
                 </svg>
-                <span class="ml-1">上一页</span>
+                <span class="ml-2">上一页</span>
             </a>
             {% else %}
-            <span class="relative inline-flex items-center px-4 py-2 border-r border-gray-300 bg-gray-100 text-sm font-medium text-gray-400 cursor-not-allowed">
-                <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <span class="pagination-btn pagination-btn-disabled">
+                <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
                 </svg>
-                <span class="ml-1">上一页</span>
+                <span class="ml-2">上一页</span>
             </span>
             {% endif %}
-            
-            <div class="hidden md:flex">
-                {% for page_num in posts.iter_pages() %}
-                    {% if page_num %}
-                        {% if page_num == posts.page %}
-                        <span class="relative inline-flex items-center px-4 py-2 border-r border-gray-300 bg-black text-sm font-medium text-white">
-                            {{ page_num }}
-                        </span>
-                        {% else %}
-                        <a href="{{ url_for('index', page=page_num, include_deleted=include_deleted, include_pending=include_pending) }}" class="relative inline-flex items-center px-4 py-2 border-r border-gray-300 bg-white text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors">
-                            {{ page_num }}
-                        </a>
-                        {% endif %}
-                    {% else %}
-                        <span class="relative inline-flex items-center px-4 py-2 border-r border-gray-300 bg-white text-sm font-medium text-gray-700">
-                            ...
-                        </span>
-                    {% endif %}
-                {% endfor %}
-            </div>
-            
-            <div class="flex md:hidden">
-                <span class="relative inline-flex items-center px-4 py-2 border-r border-gray-300 bg-white text-sm font-medium text-gray-700">
-                    {{ posts.page }} / {{ posts.pages }}
+
+            <div class="flex pagination-mobile-info">
+                <span class="pagination-btn pagination-btn-info">
+                    <span class="font-semibold text-blue-600">{{ posts.page }}</span>
+                    <span class="mx-1 text-gray-400">/</span>
+                    <span class="text-gray-600">{{ posts.pages }}</span>
                 </span>
             </div>
-            
+
             {% if posts.has_next %}
-            <a href="{{ url_for('index', page=posts.next_num, include_deleted=include_deleted, include_pending=include_pending) }}" class="relative inline-flex items-center px-4 py-2 bg-white text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors">
-                <span class="mr-1">下一页</span>
-                <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <a href="{{ url_for('index', page=posts.next_num, include_deleted=include_deleted, include_pending=include_pending) }}" class="pagination-btn pagination-btn-next">
+                <span class="mr-2">下一页</span>
+                <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
                 </svg>
             </a>
             {% else %}
-            <span class="relative inline-flex items-center px-4 py-2 bg-gray-100 text-sm font-medium text-gray-400 cursor-not-allowed">
-                <span class="mr-1">下一页</span>
-                <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <span class="pagination-btn pagination-btn-disabled">
+                <span class="mr-2">下一页</span>
+                <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
                 </svg>
             </span>
@@ -214,35 +222,38 @@
         </nav>
     </div>
     {% else %}
-    <div class="flex flex-col items-center justify-center py-20 bg-white rounded-3xl border border-gray-200 shadow-lg mx-auto">
+    <div class="flex flex-col items-center justify-center py-12 sm:py-20 bg-white rounded-xl sm:rounded-3xl border border-gray-200 shadow-lg mx-auto">
         {% if include_deleted %}
-        <svg class="w-20 h-20 text-red-300 mb-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <svg class="w-16 h-16 sm:w-20 sm:h-20 text-red-300 mb-4 sm:mb-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
         </svg>
-        <p class="text-gray-500 text-2xl font-bold mb-2">暂无已删除内容</p>
-        <p class="text-gray-400 text-lg">当前没有已删除的反馈</p>
+        <p class="text-gray-500 text-lg sm:text-2xl font-bold mb-1 sm:mb-2 text-center">暂无已删除内容</p>
+        <p class="text-gray-400 text-sm sm:text-lg text-center px-4">当前没有已删除的反馈</p>
         {% elif include_pending %}
-        <svg class="w-20 h-20 text-yellow-300 mb-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <svg class="w-16 h-16 sm:w-20 sm:h-20 text-yellow-300 mb-4 sm:mb-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
         </svg>
-        <p class="text-gray-500 text-2xl font-bold mb-2">暂无待审核内容</p>
-        <p class="text-gray-400 text-lg">当前没有需要审核的反馈</p>
+        <p class="text-gray-500 text-lg sm:text-2xl font-bold mb-1 sm:mb-2 text-center">暂无待审核内容</p>
+        <p class="text-gray-400 text-sm sm:text-lg text-center px-4">当前没有需要审核的反馈</p>
         {% else %}
-        <svg class="w-20 h-20 text-gray-300 mb-6 animate-bounce" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <svg class="w-16 h-16 sm:w-20 sm:h-20 text-gray-300 mb-4 sm:mb-6 animate-bounce" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"></path>
         </svg>
-        <p class="text-gray-500 text-2xl font-bold mb-2">暂无反馈内容</p>
-        <p class="text-gray-400 text-lg">成为第一个分享反馈的用户吧！</p>
-        {% if current_user.is_authenticated %}
-        <a href="{{ url_for('create_post') }}" class="mt-6 inline-flex items-center px-5 py-3 rounded-full bg-black text-white hover:bg-gray-800 transition-all duration-300 shadow-md hover:shadow-xl transform hover:-translate-y-1">
-            <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
-            </svg>
-            发布第一条反馈
-        </a>
-        {% endif %}
+        <p class="text-gray-500 text-lg sm:text-2xl font-bold mb-1 sm:mb-2 text-center">暂无反馈内容</p>
+        <p class="text-gray-400 text-sm sm:text-lg text-center px-4">成为第一个分享反馈的用户吧！</p>
         {% endif %}
     </div>
     {% endif %}
+
+    <!-- 悬浮加号按钮 -->
+    {% if current_user.is_authenticated and not include_deleted and not include_pending %}
+    <div class="fixed bottom-6 right-6 z-50">
+        <a href="{{ url_for('create_post') }}" class="floating-add-btn bg-blue-600 hover:bg-blue-700 text-white rounded-full w-14 h-14 flex items-center justify-center shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-110" style="background-color: #4589EB;">
+            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
+            </svg>
+        </a>
+    </div>
+    {% endif %}
 </div>
-{% endblock %} 
+{% endblock %}

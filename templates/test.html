@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>测试页面</title>
+</head>
+<body>
+    <h1>模板变量测试</h1>
+    <p>Platform Name: {{ platform_name }}</p>
+    <p>Allow Tourist: {{ allow_tourist }}</p>
+    <p>Allow Tourist Comment: {{ allow_tourist_comment }}</p>
+    
+    <h2>表单测试</h2>
+    {% if form %}
+    <p>Form object exists: {{ form }}</p>
+    <p>Form username field: {{ form.username }}</p>
+    <p>Form password field: {{ form.password }}</p>
+    {% else %}
+    <p>No form object found</p>
+    {% endif %}
+    
+    <h2>URL测试</h2>
+    <p>Tourist login URL: {{ url_for('tourist_login') }}</p>
+    <p>Register URL: {{ url_for('register') }}</p>
+</body>
+</html>

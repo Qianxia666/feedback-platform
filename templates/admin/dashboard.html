@@ -3,7 +3,7 @@
 {% block content %}
 <div class="max-w-6xl mx-auto">
     <div class="mb-8">
-        <h1 class="text-3xl md:text-4xl font-bold text-gray-900 mb-2 tracking-tight relative pl-4 border-l-4 border-gray-900">
+        <h1 class="text-3xl md:text-4xl font-bold text-gray-900 mb-2 tracking-tight relative pl-4 border-l-4" style="border-left-color: #4589EB;">
             管理员控制台
         </h1>
     </div>
@@ -106,7 +106,7 @@
                 </div>
                 
                 <div class="mt-auto pt-6">
-                    <a href="{{ url_for('admin_users') }}" class="block w-full bg-black hover:bg-gray-800 text-white py-2 px-4 rounded text-center transition duration-200">
+                    <a href="{{ url_for('admin_users') }}" class="block w-full text-white py-2 px-4 rounded text-center transition duration-200 hover:opacity-90" style="background-color: #4589EB;">
                         进入用户管理
                     </a>
                 </div>
@@ -158,7 +158,7 @@
                 </div>
                 
                 <div class="mt-auto pt-6">
-                    <a href="{{ url_for('admin_pending_posts') }}" class="block w-full bg-black hover:bg-gray-800 text-white py-2 px-4 rounded text-center transition duration-200">
+                    <a href="{{ url_for('admin_pending_posts') }}" class="block w-full text-white py-2 px-4 rounded text-center transition duration-200 hover:opacity-90" style="background-color: #4589EB;">
                         进入审核管理
                     </a>
                 </div>
@@ -194,7 +194,7 @@
                             <div class="font-medium">游客登录</div>
                             <div class="text-sm text-gray-500">控制游客是否可以登录和发帖</div>
                         </div>
-                        <div class="{% if allow_tourist == 'true' %}bg-black text-white{% else %}bg-gray-200 text-gray-700{% endif %} font-medium py-1 px-3 rounded-full text-sm">
+                        <div class="{% if allow_tourist == 'true' %}text-white{% else %}bg-gray-200 text-gray-700{% endif %} font-medium py-1 px-3 rounded-full text-sm" {% if allow_tourist == 'true' %}style="background-color: #4589EB;"{% endif %}>
                             {{ '开启' if allow_tourist == 'true' else '关闭' }}
                         </div>
                     </div>
@@ -204,14 +204,14 @@
                             <div class="font-medium">游客评论</div>
                             <div class="text-sm text-gray-500">控制游客是否可以评论帖子</div>
                         </div>
-                        <div class="{% if allow_tourist_comment == 'true' %}bg-black text-white{% else %}bg-gray-200 text-gray-700{% endif %} font-medium py-1 px-3 rounded-full text-sm">
+                        <div class="{% if allow_tourist_comment == 'true' %}text-white{% else %}bg-gray-200 text-gray-700{% endif %} font-medium py-1 px-3 rounded-full text-sm" {% if allow_tourist_comment == 'true' %}style="background-color: #4589EB;"{% endif %}>
                             {{ '开启' if allow_tourist_comment == 'true' else '关闭' }}
                         </div>
                     </div>
                 </div>
                 
                 <div class="mt-auto pt-6">
-                    <a href="{{ url_for('admin_settings') }}" class="block w-full bg-black hover:bg-gray-800 text-white py-2 px-4 rounded text-center transition duration-200">
+                    <a href="{{ url_for('admin_settings') }}" class="block w-full text-white py-2 px-4 rounded text-center transition duration-200 hover:opacity-90" style="background-color: #4589EB;">
                         系统设置
                     </a>
                 </div>

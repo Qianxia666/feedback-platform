@@ -1,9 +1,15 @@
 {% extends "base.html" %}
 
 {% block content %}
+<style>
+/* 自定义开关样式 */
+input[type="checkbox"]:checked + div {
+    background-color: #4589EB !important;
+}
+</style>
 <div class="max-w-6xl mx-auto">
     <div class="mb-8 flex justify-between items-center">
-        <h1 class="text-3xl md:text-4xl font-bold text-gray-900 mb-2 tracking-tight relative pl-4 border-l-4 border-gray-900">
+        <h1 class="text-3xl md:text-4xl font-bold text-gray-900 mb-2 tracking-tight relative pl-4 border-l-4" style="border-left-color: #4589EB;">
             系统设置
         </h1>
         <a href="{{ url_for('admin_dashboard') }}" class="inline-flex items-center px-4 py-2 bg-gray-100 text-gray-700 hover:bg-gray-200 rounded-lg transition-colors text-sm">
@@ -21,7 +27,7 @@
                     <div>
                         <label for="platform_name" class="block text-sm font-medium text-gray-700 mb-1">平台名称</label>
                         <input type="text" name="platform_name" id="platform_name" value="{{ platform_name }}" 
-                               class="px-4 py-2 border border-gray-300 rounded-md shadow-sm w-full focus:ring-black focus:border-black">
+                               class="px-4 py-2 border border-gray-300 rounded-md shadow-sm w-full focus:ring-blue-500 focus:border-blue-500" style="focus:ring-color: #4589EB; focus:border-color: #4589EB;">
                         <p class="mt-1 text-sm text-gray-500">显示在页面顶部和标题中的平台名称</p>
                     </div>
                     
@@ -30,7 +36,7 @@
                         <div class="flex items-center">
                             <label class="inline-flex relative items-center cursor-pointer">
                                 <input type="checkbox" name="allow_tourist" id="allow_tourist" {% if allow_tourist == 'true' %}checked{% endif %} class="sr-only peer">
-                                <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-black"></div>
+                                <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all" style="--tw-peer-checked-bg-opacity: 1; --tw-peer-checked-bg-color: #4589EB;" data-checked-bg="#4589EB"></div>
                             </label>
                             <span class="ml-3 text-sm font-medium text-gray-700">{{ '已开启' if allow_tourist == 'true' else '已关闭' }}</span>
                         </div>
@@ -42,17 +48,38 @@
                         <div class="flex items-center">
                             <label class="inline-flex relative items-center cursor-pointer">
                                 <input type="checkbox" name="allow_tourist_comment" id="allow_tourist_comment" {% if allow_tourist_comment == 'true' %}checked{% endif %} class="sr-only peer">
-                                <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-black"></div>
+                                <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all" style="--tw-peer-checked-bg-opacity: 1; --tw-peer-checked-bg-color: #4589EB;" data-checked-bg="#4589EB"></div>
                             </label>
                             <span class="ml-3 text-sm font-medium text-gray-700">{{ '已开启' if allow_tourist_comment == 'true' else '已关闭' }}</span>
                         </div>
                         <p class="mt-1 text-sm text-gray-500">开启时允许游客评论帖子，关闭时游客不能评论（即使允许游客登录）</p>
                     </div>
-                    
+
+                    <div>
+                        <label for="timezone" class="block text-sm font-medium text-gray-700 mb-1">系统时区</label>
+                        <select name="timezone" id="timezone" class="px-4 py-2 border border-gray-300 rounded-md shadow-sm w-full focus:ring-blue-500 focus:border-blue-500" style="focus:ring-color: #4589EB; focus:border-color: #4589EB;">
+                            <option value="Asia/Shanghai" {% if timezone_setting == 'Asia/Shanghai' %}selected{% endif %}>Asia/Shanghai (中国标准时间)</option>
+                            <option value="UTC" {% if timezone_setting == 'UTC' %}selected{% endif %}>UTC (协调世界时)</option>
+                            <option value="America/New_York" {% if timezone_setting == 'America/New_York' %}selected{% endif %}>America/New_York (美国东部时间)</option>
+                            <option value="Europe/London" {% if timezone_setting == 'Europe/London' %}selected{% endif %}>Europe/London (英国时间)</option>
+                            <option value="Asia/Tokyo" {% if timezone_setting == 'Asia/Tokyo' %}selected{% endif %}>Asia/Tokyo (日本时间)</option>
+                            <option value="Australia/Sydney" {% if timezone_setting == 'Australia/Sydney' %}selected{% endif %}>Australia/Sydney (澳大利亚东部时间)</option>
+                        </select>
+                        <p class="mt-1 text-sm text-gray-500">设置系统显示时间的时区，影响所有时间显示</p>
+                    </div>
+
                     <div class="pt-4 border-t border-gray-200">
-                        <button type="submit" class="inline-flex justify-center py-2 px-6 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-black hover:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-black">
-                            保存设置
-                        </button>
+                        <div class="flex flex-col sm:flex-row gap-4">
+                            <button type="submit" class="inline-flex justify-center py-2 px-6 border border-transparent shadow-sm text-sm font-medium rounded-md text-white hover:opacity-90 focus:outline-none focus:ring-2 focus:ring-offset-2" style="background-color: #4589EB; focus:ring-color: #4589EB;">
+                                保存设置
+                            </button>
+                            <a href="{{ url_for('export_database') }}" class="inline-flex justify-center py-2 px-6 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500" onclick="return confirm('确定要导出数据库吗？这将下载完整的数据库文件。')">
+                                <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                                </svg>
+                                导出数据库
+                            </a>
+                        </div>
                     </div>
                 </div>
             </form>

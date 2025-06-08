@@ -536,6 +536,17 @@ class Post:
         ).fetchone()[0]
         conn.close()
         return result > 0
+
+    @property
+    def total_comment_count(self):
+        """获取该帖子的总评论数（包括所有层级的回复）"""
+        conn = get_db_connection()
+        result = conn.execute(
+            'SELECT COUNT(*) FROM comment WHERE post_id = ? AND (is_deleted = 0 OR is_deleted IS NULL)',
+            (self.id,)
+        ).fetchone()[0]
+        conn.close()
+        return result
     
     @staticmethod
     def get_by_id(post_id):

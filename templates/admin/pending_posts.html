@@ -3,7 +3,7 @@
 {% block content %}
 <div class="max-w-6xl mx-auto">
     <div class="mb-8 flex justify-between items-center">
-        <h1 class="text-3xl md:text-4xl font-bold text-gray-900 mb-2 tracking-tight relative pl-4 border-l-4 border-gray-900">
+        <h1 class="text-3xl md:text-4xl font-bold text-gray-900 mb-2 tracking-tight relative pl-4 border-l-4" style="border-left-color: #4589EB;">
             {% if show_deleted %}
             已删除反馈
             {% else %}
@@ -20,7 +20,7 @@
     
     <!-- 过滤选项 -->
     <div class="mb-6 flex items-center space-x-4 border-b border-gray-200 pb-4">
-        <a href="{{ url_for('admin_pending_posts') }}" class="px-4 py-2 rounded-lg {% if not show_deleted %}bg-black text-white{% else %}bg-gray-100 text-gray-700 hover:bg-gray-200{% endif %} transition-colors">
+        <a href="{{ url_for('admin_pending_posts') }}" class="px-4 py-2 rounded-lg {% if not show_deleted %}text-white{% else %}bg-gray-100 text-gray-700 hover:bg-gray-200{% endif %} transition-colors" {% if not show_deleted %}style="background-color: #4589EB;"{% endif %}>
             <div class="flex items-center">
                 <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
@@ -28,7 +28,7 @@
                 待审核内容
             </div>
         </a>
-        <a href="{{ url_for('admin_pending_posts', show_deleted=1) }}" class="px-4 py-2 rounded-lg {% if show_deleted %}bg-black text-white{% else %}bg-gray-100 text-gray-700 hover:bg-gray-200{% endif %} transition-colors">
+        <a href="{{ url_for('admin_pending_posts', show_deleted=1) }}" class="px-4 py-2 rounded-lg {% if show_deleted %}text-white{% else %}bg-gray-100 text-gray-700 hover:bg-gray-200{% endif %} transition-colors" {% if show_deleted %}style="background-color: #4589EB;"{% endif %}>
             <div class="flex items-center">
                 <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
@@ -124,54 +124,42 @@
             
             <!-- 分页 -->
             <div class="mt-12 flex justify-center">
-                <nav class="inline-flex items-center rounded-full shadow-md overflow-hidden" aria-label="Pagination">
+                <nav class="modern-pagination" aria-label="Pagination">
                     {% if posts.has_prev %}
-                    <a href="{{ url_for('admin_pending_posts', page=posts.prev_num, show_deleted=show_deleted) }}" class="relative inline-flex items-center px-4 py-2 border-r border-gray-300 bg-white text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors">
-                        <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <a href="{{ url_for('admin_pending_posts', page=posts.prev_num, show_deleted=show_deleted) }}" class="pagination-btn pagination-btn-prev">
+                        <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
                         </svg>
-                        <span class="ml-1">上一页</span>
+                        <span class="ml-2">上一页</span>
                     </a>
                     {% else %}
-                    <span class="relative inline-flex items-center px-4 py-2 border-r border-gray-300 bg-gray-100 text-sm font-medium text-gray-400 cursor-not-allowed">
-                        <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <span class="pagination-btn pagination-btn-disabled">
+                        <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
                         </svg>
-                        <span class="ml-1">上一页</span>
+                        <span class="ml-2">上一页</span>
                     </span>
                     {% endif %}
-                    
-                    <div class="hidden md:flex">
-                        {% for page_num in range(1, posts.pages + 1) %}
-                            {% if page_num == posts.page %}
-                            <span class="relative inline-flex items-center px-4 py-2 border-r border-gray-300 bg-black text-sm font-medium text-white">
-                                {{ page_num }}
-                            </span>
-                            {% else %}
-                            <a href="{{ url_for('admin_pending_posts', page=page_num, show_deleted=show_deleted) }}" class="relative inline-flex items-center px-4 py-2 border-r border-gray-300 bg-white text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors">
-                                {{ page_num }}
-                            </a>
-                            {% endif %}
-                        {% endfor %}
-                    </div>
-                    
-                    <div class="flex md:hidden">
-                        <span class="relative inline-flex items-center px-4 py-2 border-r border-gray-300 bg-white text-sm font-medium text-gray-700">
-                            {{ posts.page }} / {{ posts.pages }}
+
+                    <div class="flex pagination-mobile-info">
+                        <span class="pagination-btn pagination-btn-info">
+                            <span class="font-semibold text-blue-600">{{ posts.page }}</span>
+                            <span class="mx-1 text-gray-400">/</span>
+                            <span class="text-gray-600">{{ posts.pages }}</span>
                         </span>
                     </div>
-                    
+
                     {% if posts.has_next %}
-                    <a href="{{ url_for('admin_pending_posts', page=posts.next_num, show_deleted=show_deleted) }}" class="relative inline-flex items-center px-4 py-2 bg-white text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors">
-                        <span class="mr-1">下一页</span>
-                        <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <a href="{{ url_for('admin_pending_posts', page=posts.next_num, show_deleted=show_deleted) }}" class="pagination-btn pagination-btn-next">
+                        <span class="mr-2">下一页</span>
+                        <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
                         </svg>
                     </a>
                     {% else %}
-                    <span class="relative inline-flex items-center px-4 py-2 bg-gray-100 text-sm font-medium text-gray-400 cursor-not-allowed">
-                        <span class="mr-1">下一页</span>
-                        <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <span class="pagination-btn pagination-btn-disabled">
+                        <span class="mr-2">下一页</span>
+                        <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
                         </svg>
                     </span>

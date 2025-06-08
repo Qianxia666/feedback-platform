@@ -39,25 +39,45 @@
         
         <!-- 分页 -->
         <div class="flex justify-center mt-8">
-            <nav class="inline-flex rounded-md shadow">
+            <nav class="modern-pagination" aria-label="Pagination">
                 {% if posts.has_prev %}
-                <a href="{{ url_for('user_profile', username=user.username, page=posts.prev_num) }}" class="py-2 px-4 border border-gray-300 bg-white text-gray-700 hover:bg-gray-50 rounded-l-md">上一页</a>
+                <a href="{{ url_for('user_profile', username=user.username, page=posts.prev_num) }}" class="pagination-btn pagination-btn-prev">
+                    <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
+                    </svg>
+                    <span class="ml-2">上一页</span>
+                </a>
                 {% else %}
-                <span class="py-2 px-4 border border-gray-300 bg-gray-100 text-gray-400 rounded-l-md">上一页</span>
+                <span class="pagination-btn pagination-btn-disabled">
+                    <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
+                    </svg>
+                    <span class="ml-2">上一页</span>
+                </span>
                 {% endif %}
-                
-                {% for page_num in range(1, posts.pages + 1) %}
-                    {% if page_num == posts.page %}
-                    <span class="py-2 px-4 border border-indigo-500 bg-indigo-600 text-white">{{ page_num }}</span>
-                    {% else %}
-                    <a href="{{ url_for('user_profile', username=user.username, page=page_num) }}" class="py-2 px-4 border border-gray-300 bg-white text-gray-700 hover:bg-gray-50">{{ page_num }}</a>
-                    {% endif %}
-                {% endfor %}
-                
+
+                <div class="flex pagination-mobile-info">
+                    <span class="pagination-btn pagination-btn-info">
+                        <span class="font-semibold text-blue-600">{{ posts.page }}</span>
+                        <span class="mx-1 text-gray-400">/</span>
+                        <span class="text-gray-600">{{ posts.pages }}</span>
+                    </span>
+                </div>
+
                 {% if posts.has_next %}
-                <a href="{{ url_for('user_profile', username=user.username, page=posts.next_num) }}" class="py-2 px-4 border border-gray-300 bg-white text-gray-700 hover:bg-gray-50 rounded-r-md">下一页</a>
+                <a href="{{ url_for('user_profile', username=user.username, page=posts.next_num) }}" class="pagination-btn pagination-btn-next">
+                    <span class="mr-2">下一页</span>
+                    <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+                    </svg>
+                </a>
                 {% else %}
-                <span class="py-2 px-4 border border-gray-300 bg-gray-100 text-gray-400 rounded-r-md">下一页</span>
+                <span class="pagination-btn pagination-btn-disabled">
+                    <span class="mr-2">下一页</span>
+                    <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+                    </svg>
+                </span>
                 {% endif %}
             </nav>
         </div>

@@ -2,7 +2,7 @@
 
 {% block content %}
 <div class="max-w-3xl mx-auto px-4 py-8">
-    <a href="{{ url_for('admin_users') }}" class="inline-flex items-center mb-6 text-gray-600 hover:text-black">
+    <a href="{{ url_for('admin_users') }}" class="inline-flex items-center mb-6 text-gray-600 hover:text-blue-600" style="hover:color: #4589EB;">
         <svg class="w-4 h-4 mr-1" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
             <path d="M15 18L9 12L15 6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></path>
         </svg>
@@ -26,7 +26,7 @@
             
             <div class="mb-6">
                 <label for="reason" class="block text-sm font-medium text-gray-700 mb-1">封禁原因 <span class="text-red-500">*</span></label>
-                {{ form.reason(class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-black focus:border-black") }}
+                {{ form.reason(class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500", style="focus:ring-color: #4589EB; focus:border-color: #4589EB;") }}
                 {% if form.reason.errors %}
                 <div class="text-red-500 text-sm mt-1">
                     {% for error in form.reason.errors %}
@@ -38,7 +38,7 @@
             </div>
             
             <div class="flex items-center justify-between">
-                <a href="{{ url_for('admin_users') }}" class="px-4 py-2 border border-gray-300 rounded-md shadow-sm bg-white text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-black">
+                <a href="{{ url_for('admin_users') }}" class="px-4 py-2 border border-gray-300 rounded-md shadow-sm bg-white text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2" style="focus:ring-color: #4589EB;">
                     取消
                 </a>
                 {{ form.submit(class="px-4 py-2 border border-transparent rounded-md shadow-sm text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500") }}

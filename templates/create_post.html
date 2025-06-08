@@ -1,53 +1,53 @@
 {% extends "base.html" %}
 
 {% block content %}
-<div class="max-w-3xl mx-auto bg-white rounded-3xl shadow-lg border border-gray-200 p-8 my-12">
-    <div class="mb-8">
-        <a href="{{ url_for('index') }}" class="inline-flex items-center text-gray-600 hover:text-black transition-colors duration-200">
-            <svg class="w-5 h-5 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+<div class="max-w-3xl mx-auto bg-white rounded-xl sm:rounded-3xl shadow-lg border border-gray-200 p-4 sm:p-6 lg:p-8 my-6 sm:my-12">
+    <div class="mb-6 sm:mb-8">
+        <a href="{{ url_for('index') }}" class="inline-flex items-center text-gray-600 hover:text-blue-600 transition-colors duration-200 text-sm sm:text-base" style="hover:color: #4589EB;">
+            <svg class="w-4 h-4 sm:w-5 sm:h-5 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path>
             </svg>
             返回首页
         </a>
     </div>
-    
-    <div class="text-center mb-8">
-        <h1 class="text-3xl font-bold text-gray-900 mb-3">发布新反馈</h1>
-        <div class="h-1 w-24 bg-gradient-to-r from-gray-900 to-gray-500 rounded-full mx-auto"></div>
-        <p class="text-gray-500 mt-3 text-sm">请详细描述您的问题或建议，以便我们更好地了解和处理</p>
+
+    <div class="text-center mb-6 sm:mb-8">
+        <h1 class="text-xl sm:text-2xl lg:text-3xl font-bold text-gray-900 mb-2 sm:mb-3">发布新反馈</h1>
+        <div class="h-1 w-16 sm:w-24 rounded-full mx-auto" style="background: #4589EB;"></div>
+        <p class="text-gray-500 mt-2 sm:mt-3 text-xs sm:text-sm leading-relaxed px-2">请详细描述您的问题或建议，以便我们更好地了解和处理</p>
     </div>
     
-    <form method="post" action="" class="space-y-8">
+    <form method="post" action="" class="space-y-6 sm:space-y-8">
         {{ form.hidden_tag() }}
-        
-        <div class="bg-gray-50 p-6 rounded-2xl border border-gray-100">
-            <label for="title" class="block text-base font-semibold text-gray-800 mb-2">标题</label>
-            <p class="text-xs text-gray-500 mb-3">一个清晰简洁的标题能帮助您的反馈更快被响应</p>
-            {{ form.title(class="w-full px-4 py-3 border border-gray-300 rounded-xl shadow-sm focus:outline-none focus:ring-2 focus:ring-black focus:border-black transition-all duration-200 text-base", placeholder="请输入反馈标题") }}
+
+        <div class="bg-gray-50 p-4 sm:p-6 rounded-xl sm:rounded-2xl border border-gray-100">
+            <label for="title" class="block text-sm sm:text-base font-semibold text-gray-800 mb-2">标题</label>
+            <p class="text-xs text-gray-500 mb-3 leading-relaxed">一个清晰简洁的标题能帮助您的反馈更快被响应</p>
+            {{ form.title(class="w-full px-3 sm:px-4 py-2.5 sm:py-3 border border-gray-300 rounded-lg sm:rounded-xl shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200 text-sm sm:text-base", placeholder="请输入反馈标题", style="focus:ring-color: #4589EB; focus:border-color: #4589EB;") }}
             {% if form.title.errors %}
-            <div class="text-red-500 text-sm mt-2">
+            <div class="text-red-500 text-xs sm:text-sm mt-2">
                 {% for error in form.title.errors %}
                 <p>{{ error }}</p>
                 {% endfor %}
             </div>
             {% endif %}
         </div>
-        
-        <div class="bg-gray-50 p-6 rounded-2xl border border-gray-100">
-            <label for="content" class="block text-base font-semibold text-gray-800 mb-2">内容</label>
-            <p class="text-xs text-gray-500 mb-3">详细描述您遇到的问题或建议，包括操作步骤、现象等信息</p>
-            {{ form.content(class="w-full px-4 py-3 border border-gray-300 rounded-xl shadow-sm focus:outline-none focus:ring-2 focus:ring-black focus:border-black transition-all duration-200 text-base", placeholder="请详细描述您的反馈内容...", rows=10) }}
+
+        <div class="bg-gray-50 p-4 sm:p-6 rounded-xl sm:rounded-2xl border border-gray-100">
+            <label for="content" class="block text-sm sm:text-base font-semibold text-gray-800 mb-2">内容</label>
+            <p class="text-xs text-gray-500 mb-3 leading-relaxed">详细描述您遇到的问题或建议，包括操作步骤、现象等信息</p>
+            {{ form.content(class="w-full px-3 sm:px-4 py-2.5 sm:py-3 border border-gray-300 rounded-lg sm:rounded-xl shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200 text-sm sm:text-base resize-y", placeholder="请详细描述您的反馈内容...", rows="8", style="focus:ring-color: #4589EB; focus:border-color: #4589EB;") }}
             {% if form.content.errors %}
-            <div class="text-red-500 text-sm mt-2">
+            <div class="text-red-500 text-xs sm:text-sm mt-2">
                 {% for error in form.content.errors %}
                 <p>{{ error }}</p>
                 {% endfor %}
             </div>
             {% endif %}
         </div>
-        
-        <div class="flex justify-center mt-6">
-            {{ form.submit(class="inline-flex justify-center py-3 px-8 border border-transparent rounded-full shadow-md text-base font-medium text-white bg-black hover:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-black transition-all duration-300 transform hover:-translate-y-1") }}
+
+        <div class="flex justify-center mt-6 sm:mt-8">
+            {{ form.submit(class="w-full sm:w-auto inline-flex justify-center py-3 px-6 sm:px-8 border border-transparent rounded-lg sm:rounded-full shadow-md text-sm sm:text-base font-medium text-white hover:opacity-90 focus:outline-none focus:ring-2 focus:ring-offset-2 transition-all duration-300 transform hover:-translate-y-1", style="background-color: #4589EB; focus:ring-color: #4589EB;") }}
         </div>
     </form>
 </div>

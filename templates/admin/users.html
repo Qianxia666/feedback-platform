@@ -3,7 +3,7 @@
 {% block content %}
 <div class="max-w-6xl mx-auto">
     <div class="mb-8 flex justify-between items-center">
-        <h1 class="text-3xl md:text-4xl font-bold text-gray-900 mb-2 tracking-tight relative pl-4 border-l-4 border-gray-900">
+        <h1 class="text-3xl md:text-4xl font-bold text-gray-900 mb-2 tracking-tight relative pl-4 border-l-4" style="border-left-color: #4589EB;">
             用户管理
         </h1>
         <a href="{{ url_for('admin_dashboard') }}" class="inline-flex items-center px-4 py-2 bg-gray-100 text-gray-700 hover:bg-gray-200 rounded-lg transition-colors text-sm">
@@ -46,11 +46,11 @@
                         </td>
                         <td class="px-6 py-4 whitespace-nowrap">
                             {% if user.is_admin %}
-                            <span class="px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-black text-white shadow-sm">
+                            <span class="px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full text-white shadow-sm" style="background-color: #4589EB;">
                                 管理员
                             </span>
                             {% elif user.is_sub_admin %}
-                            <span class="px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-gray-800 text-white shadow-sm">
+                            <span class="px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full text-white shadow-sm" style="background-color: #4589EB;">
                                 子管理员
                             </span>
                             {% else %}
@@ -73,24 +73,51 @@
                         <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                             {% if user.created_at %}{{ user.created_at|format_datetime('%Y-%m-%d %H:%M') }}{% else %}未知{% endif %}
                         </td>
-                        <td class="px-6 py-4 whitespace-nowrap text-xs space-x-2">
-                            <a href="{{ url_for('edit_user', user_id=user.id) }}" class="text-gray-600 hover:text-gray-900 hover:underline transition-colors duration-200">编辑</a>
-                            
-                            {% if current_user.is_admin %}
-                            {% if not user.is_admin and not user.is_sub_admin %}
-                            <a href="{{ url_for('promote_user', user_id=user.id, role='sub_admin') }}" class="text-indigo-600 hover:text-indigo-900 hover:underline transition-colors duration-200">提升为子管理员</a>
-                            {% elif user.is_sub_admin %}
-                            <a href="{{ url_for('demote_user', user_id=user.id) }}" class="text-yellow-600 hover:text-yellow-900 hover:underline transition-colors duration-200">降级</a>
-                            {% endif %}
-                            {% endif %}
-                            
-                            {% if user.is_banned %}
-                            <a href="{{ url_for('unban_user', user_id=user.id) }}" class="text-green-600 hover:text-green-900 hover:underline transition-colors duration-200">解除封禁</a>
-                            {% else %}
-                            {% if user.id != current_user.id %}
-                            <a href="{{ url_for('ban_user', user_id=user.id) }}" class="text-red-600 hover:text-red-900 hover:underline transition-colors duration-200">封禁</a>
-                            {% endif %}
-                            {% endif %}
+                        <td class="px-6 py-4 whitespace-nowrap">
+                            <div class="flex flex-wrap gap-2">
+                                <a href="{{ url_for('edit_user', user_id=user.id) }}" class="inline-flex items-center px-3 py-1.5 text-xs font-medium rounded-lg transition-all duration-200 hover:shadow-md" style="background-color: #4589EB; color: white;">
+                                    <svg class="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path>
+                                    </svg>
+                                    编辑
+                                </a>
+
+                                {% if current_user.is_admin %}
+                                {% if not user.is_admin and not user.is_sub_admin %}
+                                <a href="{{ url_for('promote_user', user_id=user.id, role='sub_admin') }}" class="inline-flex items-center px-3 py-1.5 text-xs font-medium rounded-lg transition-all duration-200 hover:shadow-md" style="background-color: #4589EB; color: white;">
+                                    <svg class="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 11l5-5m0 0l5 5m-5-5v12"></path>
+                                    </svg>
+                                    提升为子管理员
+                                </a>
+                                {% elif user.is_sub_admin %}
+                                <a href="{{ url_for('demote_user', user_id=user.id) }}" class="inline-flex items-center px-3 py-1.5 text-xs font-medium rounded-lg transition-all duration-200 hover:shadow-md" style="background-color: #f59e0b; color: white;">
+                                    <svg class="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 13l-5 5m0 0l-5-5m5 5V6"></path>
+                                    </svg>
+                                    降级
+                                </a>
+                                {% endif %}
+                                {% endif %}
+
+                                {% if user.is_banned %}
+                                <a href="{{ url_for('unban_user', user_id=user.id) }}" class="inline-flex items-center px-3 py-1.5 text-xs font-medium rounded-lg transition-all duration-200 hover:shadow-md" style="background-color: #10b981; color: white;">
+                                    <svg class="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                                    </svg>
+                                    解除封禁
+                                </a>
+                                {% else %}
+                                {% if user.id != current_user.id %}
+                                <a href="{{ url_for('ban_user', user_id=user.id) }}" class="inline-flex items-center px-3 py-1.5 text-xs font-medium rounded-lg transition-all duration-200 hover:shadow-md" style="background-color: #ef4444; color: white;">
+                                    <svg class="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728L5.636 5.636m12.728 12.728L18.364 5.636M5.636 18.364l12.728-12.728"></path>
+                                    </svg>
+                                    封禁
+                                </a>
+                                {% endif %}
+                                {% endif %}
+                            </div>
                         </td>
                     </tr>
                     {% endfor %}
@@ -101,54 +128,42 @@
     
     <!-- 分页 -->
     <div class="mt-8 flex justify-center">
-        <nav class="inline-flex items-center rounded-full shadow-md overflow-hidden" aria-label="Pagination">
+        <nav class="modern-pagination" aria-label="Pagination">
             {% if users.has_prev %}
-            <a href="{{ url_for('admin_users', page=users.prev_num) }}" class="relative inline-flex items-center px-4 py-2 border-r border-gray-300 bg-white text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors">
-                <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <a href="{{ url_for('admin_users', page=users.prev_num) }}" class="pagination-btn pagination-btn-prev">
+                <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
                 </svg>
-                <span class="ml-1">上一页</span>
+                <span class="ml-2">上一页</span>
             </a>
             {% else %}
-            <span class="relative inline-flex items-center px-4 py-2 border-r border-gray-300 bg-gray-100 text-sm font-medium text-gray-400 cursor-not-allowed">
-                <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <span class="pagination-btn pagination-btn-disabled">
+                <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
                 </svg>
-                <span class="ml-1">上一页</span>
+                <span class="ml-2">上一页</span>
             </span>
             {% endif %}
-            
-            <div class="hidden md:flex">
-                {% for page_num in range(1, users.pages + 1) %}
-                    {% if page_num == users.page %}
-                    <span class="relative inline-flex items-center px-4 py-2 border-r border-gray-300 bg-black text-sm font-medium text-white">
-                        {{ page_num }}
-                    </span>
-                    {% else %}
-                    <a href="{{ url_for('admin_users', page=page_num) }}" class="relative inline-flex items-center px-4 py-2 border-r border-gray-300 bg-white text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors">
-                        {{ page_num }}
-                    </a>
-                    {% endif %}
-                {% endfor %}
-            </div>
-            
-            <div class="flex md:hidden">
-                <span class="relative inline-flex items-center px-4 py-2 border-r border-gray-300 bg-white text-sm font-medium text-gray-700">
-                    {{ users.page }} / {{ users.pages }}
+
+            <div class="flex pagination-mobile-info">
+                <span class="pagination-btn pagination-btn-info">
+                    <span class="font-semibold text-blue-600">{{ users.page }}</span>
+                    <span class="mx-1 text-gray-400">/</span>
+                    <span class="text-gray-600">{{ users.pages }}</span>
                 </span>
             </div>
-            
+
             {% if users.has_next %}
-            <a href="{{ url_for('admin_users', page=users.next_num) }}" class="relative inline-flex items-center px-4 py-2 bg-white text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors">
-                <span class="mr-1">下一页</span>
-                <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <a href="{{ url_for('admin_users', page=users.next_num) }}" class="pagination-btn pagination-btn-next">
+                <span class="mr-2">下一页</span>
+                <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
                 </svg>
             </a>
             {% else %}
-            <span class="relative inline-flex items-center px-4 py-2 bg-gray-100 text-sm font-medium text-gray-400 cursor-not-allowed">
-                <span class="mr-1">下一页</span>
-                <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <span class="pagination-btn pagination-btn-disabled">
+                <span class="mr-2">下一页</span>
+                <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
                 </svg>
             </span>

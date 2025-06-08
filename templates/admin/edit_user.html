@@ -24,9 +24,9 @@
                     <div class="text-xl font-semibold mb-1">{{ user.username }}</div>
                     <div class="flex items-center">
                         {% if user.is_admin %}
-                        <span class="bg-black text-white text-xs px-2 py-0.5 rounded uppercase tracking-wider font-semibold mr-2">管理员</span>
+                        <span class="text-white text-xs px-2 py-0.5 rounded uppercase tracking-wider font-semibold mr-2" style="background-color: #4589EB;">管理员</span>
                         {% elif user.is_sub_admin %}
-                        <span class="bg-black text-white text-xs px-2 py-0.5 rounded uppercase tracking-wider font-semibold mr-2">管理员</span>
+                        <span class="text-white text-xs px-2 py-0.5 rounded uppercase tracking-wider font-semibold mr-2" style="background-color: #4589EB;">子管理员</span>
                         {% endif %}
                         
                         {% if user.is_banned %}
@@ -36,36 +36,36 @@
                 </div>
             </div>
         
-            <form method="post" class="space-y-6">
+            <form method="post" class="space-y-6 edit-user-form">
                 {{ form.hidden_tag() }}
                 
                 <div>
                     <label for="username" class="block text-sm font-medium text-gray-700 mb-1">用户名</label>
-                    {{ form.username(class="appearance-none block w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-black focus:border-black transition-colors", id="username") }}
+                    {{ form.username(class="appearance-none block w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 transition-colors", style="focus:ring-color: #4589EB; focus:border-color: #4589EB;", id="username") }}
                     {% if form.username.errors %}
                     <p class="text-red-600 text-sm mt-1">{{ form.username.errors[0] }}</p>
                     {% endif %}
                 </div>
-                
+
                 <div>
                     <label for="email" class="block text-sm font-medium text-gray-700 mb-1">电子邮箱</label>
-                    {{ form.email(class="appearance-none block w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-black focus:border-black transition-colors", id="email") }}
+                    {{ form.email(class="appearance-none block w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 transition-colors", style="focus:ring-color: #4589EB; focus:border-color: #4589EB;", id="email") }}
                     {% if form.email.errors %}
                     <p class="text-red-600 text-sm mt-1">{{ form.email.errors[0] }}</p>
                     {% endif %}
                 </div>
-                
+
                 <div>
                     <label for="password" class="block text-sm font-medium text-gray-700 mb-1">新密码 <span class="text-gray-400">(留空保持不变)</span></label>
-                    {{ form.password(class="appearance-none block w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-black focus:border-black transition-colors", id="password") }}
+                    {{ form.password(class="appearance-none block w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 transition-colors", style="focus:ring-color: #4589EB; focus:border-color: #4589EB;", id="password") }}
                     {% if form.password.errors %}
                     <p class="text-red-600 text-sm mt-1">{{ form.password.errors[0] }}</p>
                     {% endif %}
                 </div>
-                
+
                 <div>
                     <label for="password2" class="block text-sm font-medium text-gray-700 mb-1">确认新密码</label>
-                    {{ form.password2(class="appearance-none block w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-black focus:border-black transition-colors", id="password2") }}
+                    {{ form.password2(class="appearance-none block w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 transition-colors", style="focus:ring-color: #4589EB; focus:border-color: #4589EB;", id="password2") }}
                     {% if form.password2.errors %}
                     <p class="text-red-600 text-sm mt-1">{{ form.password2.errors[0] }}</p>
                     {% endif %}
@@ -76,15 +76,15 @@
                     
                     <div class="space-y-4">
                         <div class="flex items-start">
-                            {{ form.is_admin(class="h-5 w-5 text-black focus:ring-black border-gray-300 rounded mt-1", id="is_admin") }}
+                            {{ form.is_admin(class="h-5 w-5 border-gray-300 rounded mt-1", style="color: #4589EB; accent-color: #4589EB;", id="is_admin") }}
                             <label for="is_admin" class="ml-3 block">
                                 <span class="text-sm font-medium text-gray-700">管理员权限</span>
                                 <p class="text-xs text-gray-500 mt-1">拥有最高级别权限，可以管理所有内容和用户</p>
                             </label>
                         </div>
-                        
+
                         <div class="flex items-start">
-                            {{ form.is_sub_admin(class="h-5 w-5 text-black focus:ring-black border-gray-300 rounded mt-1", id="is_sub_admin") }}
+                            {{ form.is_sub_admin(class="h-5 w-5 border-gray-300 rounded mt-1", style="color: #4589EB; accent-color: #4589EB;", id="is_sub_admin") }}
                             <label for="is_sub_admin" class="ml-3 block">
                                 <span class="text-sm font-medium text-gray-700">子管理员权限</span>
                                 <p class="text-xs text-gray-500 mt-1">可以管理内容和普通用户，但无法设置其他用户为管理员</p>
@@ -118,10 +118,10 @@
                 </div>
                 
                 <div class="flex justify-end pt-6">
-                    <a href="{{ url_for('user_profile', username=user.username) }}" class="inline-flex items-center px-4 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-lg text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-black mr-3 transition-colors">
+                    <a href="{{ url_for('user_profile', username=user.username) }}" class="inline-flex items-center px-4 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-lg text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 mr-3 transition-colors" style="focus:ring-color: #4589EB;">
                         取消
                     </a>
-                    {{ form.submit(class="inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-lg text-white bg-black hover:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-black transition-colors") }}
+                    {{ form.submit(class="inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-offset-2 transition-colors", style="background-color: #4589EB; hover:background-color: #3b7dd8; focus:ring-color: #4589EB;") }}
                 </div>
             </form>
         </div>

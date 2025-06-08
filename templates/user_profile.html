@@ -3,75 +3,77 @@
 {% block content %}
 <div class="max-w-4xl mx-auto">
     <!-- 返回按钮 -->
-    <a href="{{ url_for('index') }}" class="inline-flex items-center text-gray-600 hover:text-black mb-8 group">
-        <svg class="w-5 h-5 mr-2 group-hover:-translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+    <a href="{{ url_for('index') }}" class="inline-flex items-center text-gray-600 hover:text-black mb-6 sm:mb-8 group text-sm sm:text-base">
+        <svg class="w-4 h-4 sm:w-5 sm:h-5 mr-1.5 sm:mr-2 group-hover:-translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path>
         </svg>
         返回广场
     </a>
 
     <!-- 用户信息卡 -->
-    <div class="bg-white rounded-xl shadow-md overflow-hidden mb-8 border border-gray-200 animate-fade-in animate-once">
-        <div class="border-b border-gray-200 px-6 py-4">
-            <h1 class="text-2xl md:text-3xl font-bold text-gray-900 flex items-center pl-4 border-l-4 border-gray-900">
-                <div class="w-12 h-12 rounded-full bg-gray-200 flex items-center justify-center text-gray-700 font-semibold text-lg mr-3">
+    <div class="bg-white rounded-lg sm:rounded-xl shadow-md overflow-hidden mb-6 sm:mb-8 border border-gray-200 animate-fade-in animate-once">
+        <div class="border-b border-gray-200 px-4 sm:px-6 py-3 sm:py-4">
+            <h1 class="text-lg sm:text-xl md:text-2xl lg:text-3xl font-bold text-gray-900 flex flex-col sm:flex-row sm:items-center pl-3 sm:pl-4 border-l-4" style="border-left-color: #4589EB;">
+                <div class="w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-gray-200 flex items-center justify-center text-gray-700 font-semibold text-base sm:text-lg mr-0 sm:mr-3 mb-2 sm:mb-0">
                     {{ user.username[0] | upper }}
                 </div>
-                <div class="flex items-center">
-                    <span>{{ user.username }}</span>
-                    {% if user.is_banned %}
-                    <span class="bg-red-600 text-white text-xs px-2 py-0.5 rounded uppercase tracking-wider font-semibold ml-2">已封禁</span>
-                    {% endif %}
-                    {% if user.is_admin %}
-                    <span class="bg-black text-white text-xs px-2 py-0.5 rounded uppercase tracking-wider font-semibold ml-2">管理员</span>
-                    {% elif user.is_sub_admin %}
-                    <span class="bg-black text-white text-xs px-2 py-0.5 rounded uppercase tracking-wider font-semibold ml-2">管理员</span>
-                    {% endif %}
+                <div class="flex flex-col sm:flex-row sm:items-center">
+                    <span class="mb-1 sm:mb-0">{{ user.username }}</span>
+                    <div class="flex flex-wrap gap-1 sm:gap-2 sm:ml-2">
+                        {% if user.is_banned %}
+                        <span class="bg-red-600 text-white text-xs px-1.5 sm:px-2 py-0.5 rounded uppercase tracking-wider font-semibold">已封禁</span>
+                        {% endif %}
+                        {% if user.is_admin %}
+                        <span class="text-white text-xs px-1.5 sm:px-2 py-0.5 rounded uppercase tracking-wider font-semibold" style="background-color: #4589EB;">管理员</span>
+                        {% elif user.is_sub_admin %}
+                        <span class="text-white text-xs px-1.5 sm:px-2 py-0.5 rounded uppercase tracking-wider font-semibold" style="background-color: #4589EB;">管理员</span>
+                        {% endif %}
+                    </div>
                 </div>
             </h1>
         </div>
-        <div class="p-6 md:p-8">
+        <div class="p-4 sm:p-6 md:p-8">
             {% if user.is_banned %}
-            <div class="bg-red-50 border-l-4 border-red-500 p-4 rounded-r-lg mb-6">
+            <div class="bg-red-50 border-l-4 border-red-500 p-3 sm:p-4 rounded-r-lg mb-4 sm:mb-6">
                 <div class="flex">
                     <div class="flex-shrink-0">
-                        <svg class="h-5 w-5 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <svg class="h-4 w-4 sm:h-5 sm:w-5 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
                         </svg>
                     </div>
-                    <div class="ml-3">
-                        <p class="text-sm text-red-600 font-medium">此用户已被封禁</p>
+                    <div class="ml-2 sm:ml-3">
+                        <p class="text-xs sm:text-sm text-red-600 font-medium">此用户已被封禁</p>
                         {% if user.banned_reason %}
-                        <p class="text-sm text-red-500 mt-1">封禁原因: {{ user.banned_reason }}</p>
+                        <p class="text-xs sm:text-sm text-red-500 mt-1">封禁原因: {{ user.banned_reason }}</p>
                         {% endif %}
                     </div>
                 </div>
             </div>
             {% endif %}
-            
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
-                <div class="bg-gray-50 rounded-lg p-4 border border-gray-200">
-                    <div class="text-sm text-gray-500 mb-1">用户ID</div>
-                    <div class="font-medium">{{ user.id }}</div>
+
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6 mb-4 sm:mb-6">
+                <div class="bg-gray-50 rounded-lg p-3 sm:p-4 border border-gray-200">
+                    <div class="text-xs sm:text-sm text-gray-500 mb-1">用户ID</div>
+                    <div class="font-medium text-sm sm:text-base">{{ user.id }}</div>
                 </div>
-                <div class="bg-gray-50 rounded-lg p-4 border border-gray-200">
-                    <div class="text-sm text-gray-500 mb-1">注册时间</div>
-                    <div class="font-medium">{% if user.created_at %}{{ user.created_at }}{% else %}未知{% endif %}</div>
+                <div class="bg-gray-50 rounded-lg p-3 sm:p-4 border border-gray-200">
+                    <div class="text-xs sm:text-sm text-gray-500 mb-1">注册时间</div>
+                    <div class="font-medium text-sm sm:text-base">{% if user.created_at %}{{ user.created_at }}{% else %}未知{% endif %}</div>
                 </div>
             </div>
-            
-            <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
-                <div class="flex flex-col items-center bg-gray-50 rounded-lg p-4 border border-gray-200">
-                    <div class="text-3xl font-bold text-gray-900 mb-1">{{ user_posts|length }}</div>
-                    <div class="text-sm text-gray-500">发布的反馈</div>
+
+            <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 sm:gap-6 mb-4 sm:mb-6">
+                <div class="flex flex-col items-center bg-gray-50 rounded-lg p-3 sm:p-4 border border-gray-200">
+                    <div class="text-2xl sm:text-3xl font-bold text-gray-900 mb-1">{{ user_posts|length }}</div>
+                    <div class="text-xs sm:text-sm text-gray-500 text-center">发布的反馈</div>
                 </div>
-                <div class="flex flex-col items-center bg-gray-50 rounded-lg p-4 border border-gray-200">
-                    <div class="text-3xl font-bold text-gray-900 mb-1">{{ user_comments|length }}</div>
-                    <div class="text-sm text-gray-500">发表的评论</div>
+                <div class="flex flex-col items-center bg-gray-50 rounded-lg p-3 sm:p-4 border border-gray-200">
+                    <div class="text-2xl sm:text-3xl font-bold text-gray-900 mb-1">{{ user_comments|length }}</div>
+                    <div class="text-xs sm:text-sm text-gray-500 text-center">发表的评论</div>
                 </div>
-                <div class="flex flex-col items-center bg-gray-50 rounded-lg p-4 border border-gray-200">
-                    <div class="text-3xl font-bold text-gray-900 mb-1">{{ user.last_seen|format_datetime('%Y-%m-%d') if user.last_seen else '未知' }}</div>
-                    <div class="text-sm text-gray-500">最后活跃</div>
+                <div class="flex flex-col items-center bg-gray-50 rounded-lg p-3 sm:p-4 border border-gray-200">
+                    <div class="text-lg sm:text-xl lg:text-2xl xl:text-3xl font-bold text-gray-900 mb-1 text-center leading-tight">{{ user.last_seen|format_datetime('%m-%d') if user.last_seen else '未知' }}</div>
+                    <div class="text-xs sm:text-sm text-gray-500 text-center">最后活跃</div>
                 </div>
             </div>
             
@@ -80,7 +82,7 @@
             <div class="border-t border-gray-200 pt-6 mt-6">
                 <h3 class="text-lg font-semibold text-gray-800 mb-4">管理操作</h3>
                 <div class="flex flex-wrap gap-3">
-                    <a href="{{ url_for('edit_user', user_id=user.id) }}" class="inline-flex items-center px-4 py-2 bg-gray-800 text-white hover:bg-gray-700 rounded-lg transition-colors shadow-sm text-sm">
+                    <a href="{{ url_for('edit_user', user_id=user.id) }}" class="inline-flex items-center px-4 py-2 text-white hover:opacity-90 rounded-lg transition-colors shadow-sm text-sm" style="background-color: #4589EB;">
                         <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path>
                         </svg>
@@ -105,7 +107,7 @@
                     
                     {% if current_user.is_admin %}
                     {% if not user.is_admin and not user.is_sub_admin %}
-                    <a href="{{ url_for('promote_user', user_id=user.id, role='sub_admin') }}" class="inline-flex items-center px-4 py-2 bg-indigo-600 text-white hover:bg-indigo-700 rounded-lg transition-colors shadow-sm text-sm">
+                    <a href="{{ url_for('promote_user', user_id=user.id, role='sub_admin') }}" class="inline-flex items-center px-4 py-2 text-white hover:opacity-90 rounded-lg transition-colors shadow-sm text-sm" style="background-color: #4589EB;">
                         <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"></path>
                         </svg>
@@ -130,7 +132,7 @@
                 <h3 class="text-lg font-semibold text-gray-800 mb-4">账号设置</h3>
                 <div class="flex flex-wrap gap-3">
                     {% if current_user.username != 'tourist' %}
-                    <a href="{{ url_for('edit_profile') }}" class="inline-flex items-center px-4 py-2 bg-black text-white hover:bg-gray-800 rounded-lg transition-colors shadow-sm text-sm">
+                    <a href="{{ url_for('edit_profile') }}" class="inline-flex items-center px-4 py-2 text-white hover:opacity-90 rounded-lg transition-colors shadow-sm text-sm" style="background-color: #4589EB;">
                         <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path>
                         </svg>
@@ -147,7 +149,7 @@
                     {% endif %}
                     
                     {% if current_user.is_admin or current_user.is_sub_admin %}
-                    <a href="{{ url_for('admin_dashboard') }}" class="inline-flex items-center px-4 py-2 bg-red-600 text-white hover:bg-red-700 rounded-lg transition-colors shadow-sm text-sm">
+                    <a href="{{ url_for('admin_dashboard') }}" class="inline-flex items-center px-4 py-2 text-white hover:opacity-90 rounded-lg transition-colors shadow-sm text-sm" style="background-color: #4589EB;">
                         <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path>
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>

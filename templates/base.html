@@ -26,6 +26,7 @@
         }
     </script>
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
     <style>
         .nl2br {
             white-space: pre-line;
@@ -33,11 +34,82 @@
         .animate-once {
             animation-iteration-count: 1;
         }
+        /* 移动端优化样式 */
         @media (max-width: 640px) {
             .container {
                 width: 100%;
-                padding-left: 1rem;
-                padding-right: 1rem;
+                padding-left: 0.75rem;
+                padding-right: 0.75rem;
+            }
+
+            /* 移动端文字大小优化 */
+            .mobile-text-sm { font-size: 0.875rem; }
+            .mobile-text-base { font-size: 1rem; }
+            .mobile-text-lg { font-size: 1.125rem; }
+            .mobile-text-xl { font-size: 1.25rem; }
+            .mobile-text-2xl { font-size: 1.5rem; }
+
+            /* 移动端间距优化 */
+            .mobile-p-2 { padding: 0.5rem; }
+            .mobile-p-3 { padding: 0.75rem; }
+            .mobile-p-4 { padding: 1rem; }
+            .mobile-px-3 { padding-left: 0.75rem; padding-right: 0.75rem; }
+            .mobile-py-2 { padding-top: 0.5rem; padding-bottom: 0.5rem; }
+            .mobile-m-2 { margin: 0.5rem; }
+            .mobile-mb-3 { margin-bottom: 0.75rem; }
+            .mobile-mb-4 { margin-bottom: 1rem; }
+
+            /* 移动端按钮优化 */
+            .mobile-btn {
+                min-height: 44px;
+                padding: 0.75rem 1rem;
+                font-size: 1rem;
+            }
+
+            /* 移动端卡片优化 */
+            .mobile-card {
+                margin-bottom: 0.75rem;
+                border-radius: 0.75rem;
+            }
+
+            /* 移动端导航优化 */
+            .mobile-nav {
+                padding: 0.75rem;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .container {
+                padding-left: 0.5rem;
+                padding-right: 0.5rem;
+            }
+
+            /* 超小屏幕优化 */
+            .xs-text-sm { font-size: 0.8rem; }
+            .xs-p-2 { padding: 0.5rem; }
+            .xs-px-2 { padding-left: 0.5rem; padding-right: 0.5rem; }
+        }
+
+        /* 移动端特定优化 */
+        @media (max-width: 640px) {
+            /* 防止iOS Safari缩放 */
+            input[type="text"],
+            input[type="email"],
+            input[type="password"],
+            textarea,
+            select {
+                font-size: 16px !important;
+            }
+
+            /* 优化触摸滚动 */
+            * {
+                -webkit-overflow-scrolling: touch;
+            }
+
+            /* 移动端安全区域适配 */
+            .safe-area-inset {
+                padding-left: env(safe-area-inset-left);
+                padding-right: env(safe-area-inset-right);
             }
         }
         /* 滚动条样式 */
@@ -55,59 +127,78 @@
         ::-webkit-scrollbar-thumb:hover {
             background: #555;
         }
+        /* 现代化滚动条 */
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #4589EB;
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #3b7dd8;
+        }
     </style>
 </head>
-<body class="bg-gray-100 min-h-screen flex flex-col text-gray-900 antialiased">
+<body class="min-h-screen flex flex-col text-gray-900 antialiased">
     {% if request.endpoint not in ['login', 'register'] %}
-    <nav class="bg-black text-white shadow-md z-10 sticky top-0">
-        <div class="container mx-auto px-4 py-3">
+    <nav class="modern-navbar text-white shadow-md z-10 sticky top-0" style="background: rgba(69, 137, 235, 0.95); backdrop-filter: blur(20px);">
+        <div class="container mx-auto px-3 sm:px-4 py-3 sm:py-4 mobile-nav">
             <div class="flex justify-between items-center">
-                <div class="flex items-center space-x-4">
+                <div class="flex items-center space-x-2 sm:space-x-4">
                     <a href="{{ url_for('index') }}" class="flex items-center">
-                        <span class="text-xl font-bold text-white">{{ platform_name }}</span>
+                        <span class="navbar-brand text-lg sm:text-xl mobile-text-lg">{{ platform_name }}</span>
                     </a>
                 </div>
-                
+
                 <!-- 移动端菜单按钮 -->
                 <div class="md:hidden flex items-center">
-                    <button id="menu-toggle" class="text-white focus:outline-none">
-                        <svg class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <button id="menu-toggle" class="text-white focus:outline-none p-2 mobile-btn" aria-label="菜单">
+                        <svg class="h-5 w-5 sm:h-6 sm:w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path id="menu-icon" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path>
                             <path id="close-icon" class="hidden" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
                         </svg>
                     </button>
                 </div>
                 
-                <div class="hidden md:flex items-center space-x-2">
+                <div class="hidden md:flex items-center space-x-1 lg:space-x-2">
                     {% if current_user.is_authenticated %}
-                    <a class="hover:bg-gray-800 px-3 py-2 rounded transition-colors duration-200 flex items-center" href="{{ url_for('user_profile', username=current_user.username) }}">
+                    <a class="hover:bg-white hover:bg-opacity-20 px-2 lg:px-3 py-2 rounded transition-colors duration-200 flex items-center text-sm lg:text-base" href="{{ url_for('user_profile', username=current_user.username) }}">
                         {% if current_user.is_admin %}
-                        <span class="bg-white text-black text-xs px-2 py-1 rounded mr-2 font-semibold">管理员</span>
+                        <span class="bg-white text-xs px-1.5 lg:px-2 py-0.5 lg:py-1 rounded mr-1 lg:mr-2 font-semibold shadow-sm border" style="color: #4589EB; border-color: #4589EB;">管理员</span>
+                        {% elif current_user.is_sub_admin %}
+                        <span class="bg-white text-xs px-1.5 lg:px-2 py-0.5 lg:py-1 rounded mr-1 lg:mr-2 font-semibold shadow-sm border" style="color: #4589EB; border-color: #4589EB;">管理员</span>
                         {% endif %}
-                        <span class="inline-block">{{ current_user.username }}</span>
+                        <span class="inline-block truncate max-w-24 lg:max-w-none">{{ current_user.username }}</span>
                     </a>
-                    <a class="hover:bg-gray-800 px-3 py-2 rounded transition-colors duration-200" href="{{ url_for('logout') }}">注销</a>
+                    <a class="hover:bg-white hover:bg-opacity-20 px-2 lg:px-3 py-2 rounded transition-colors duration-200 text-sm lg:text-base" href="{{ url_for('logout') }}">注销</a>
                     {% else %}
-                    <a class="hover:bg-gray-800 px-3 py-2 rounded transition-colors duration-200" href="{{ url_for('login') }}">登录</a>
-                    <a class="bg-white text-black hover:bg-gray-200 px-3 py-2 rounded transition-colors duration-200 font-medium" href="{{ url_for('register') }}">注册</a>
+                    <a class="hover:bg-white hover:bg-opacity-20 px-2 lg:px-3 py-2 rounded transition-colors duration-200 text-sm lg:text-base" href="{{ url_for('login') }}">登录</a>
+                    <a class="bg-white hover:bg-gray-200 px-2 lg:px-3 py-2 rounded transition-colors duration-200 font-medium text-sm lg:text-base" href="{{ url_for('register') }}" style="color: #4589EB;">注册</a>
                     {% endif %}
                 </div>
             </div>
             
             <!-- 移动端菜单 -->
-            <div id="mobile-menu" class="md:hidden hidden mt-4 pb-2 animate-fade-in animate-once">
-                <div class="flex flex-col space-y-2">
+            <div id="mobile-menu" class="md:hidden hidden mt-3 pb-2 animate-fade-in animate-once">
+                <div class="flex flex-col space-y-1">
                     {% if current_user.is_authenticated %}
-                    <a class="hover:bg-gray-800 px-3 py-2 rounded transition-colors duration-200 flex items-center" href="{{ url_for('user_profile', username=current_user.username) }}">
+                    <a class="hover:bg-white hover:bg-opacity-20 px-3 py-3 rounded transition-colors duration-200 flex items-center mobile-btn" href="{{ url_for('user_profile', username=current_user.username) }}">
                         {% if current_user.is_admin %}
-                        <span class="bg-white text-black text-xs px-2 py-1 rounded mr-2 font-semibold">管理员</span>
+                        <span class="bg-white text-xs px-2 py-1 rounded mr-2 font-semibold shadow-sm border" style="color: #4589EB; border-color: #4589EB;">管理员</span>
+                        {% elif current_user.is_sub_admin %}
+                        <span class="bg-white text-xs px-2 py-1 rounded mr-2 font-semibold shadow-sm border" style="color: #4589EB; border-color: #4589EB;">管理员</span>
                         {% endif %}
-                        <span>{{ current_user.username }}</span>
+                        <span class="mobile-text-base">{{ current_user.username }}</span>
                     </a>
-                    <a class="hover:bg-gray-800 px-3 py-2 rounded transition-colors duration-200" href="{{ url_for('logout') }}">注销</a>
+                    <a class="hover:bg-white hover:bg-opacity-20 px-3 py-3 rounded transition-colors duration-200 mobile-btn mobile-text-base" href="{{ url_for('logout') }}">注销</a>
                     {% else %}
-                    <a class="hover:bg-gray-800 px-3 py-2 rounded transition-colors duration-200" href="{{ url_for('login') }}">登录</a>
-                    <a class="bg-white text-black hover:bg-gray-200 px-3 py-2 rounded transition-colors duration-200 text-center font-medium" href="{{ url_for('register') }}">注册</a>
+                    <a class="hover:bg-white hover:bg-opacity-20 px-3 py-3 rounded transition-colors duration-200 mobile-btn mobile-text-base" href="{{ url_for('login') }}">登录</a>
+                    <a class="bg-white hover:bg-gray-200 px-3 py-3 rounded transition-colors duration-200 text-center font-medium mobile-btn mobile-text-base" href="{{ url_for('register') }}" style="color: #4589EB;">注册</a>
                     {% endif %}
                 </div>
             </div>
@@ -120,37 +211,40 @@
     <!-- 登录/注册页面不需要容器和内边距 -->
     <div class="flex-grow">
     {% else %}
-    <!-- 其他页面使用容器和内边距 -->
-    <div class="flex-grow container mx-auto px-4 py-6">
-        <!-- 普通页面显示提示消息 -->
-        {% with messages = get_flashed_messages() %}
-        {% if messages %}
-        <div class="mb-6">
-            {% for message in messages %}
-            <div class="bg-gray-200 border-l-4 border-gray-800 text-gray-800 p-4 mb-2 relative animate-fade-in animate-once" role="alert">
-                {{ message }}
-                <button type="button" class="absolute top-0 right-0 mt-2 mr-2" onclick="this.parentNode.remove()">
-                    <svg class="h-4 w-4" fill="currentColor" viewBox="0 0 20 20">
-                        <path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd"></path>
-                    </svg>
-                </button>
+    <!-- 其他页面使用现代化容器 -->
+    <div class="flex-grow">
+        <div class="page-container">
+            <!-- 普通页面显示提示消息 -->
+            {% with messages = get_flashed_messages() %}
+            {% if messages %}
+            <div class="mb-6">
+                {% for message in messages %}
+                <div class="modern-form border-l-4 border-blue-500 text-gray-800 p-4 mb-3 relative fade-in-up" role="alert" style="animation-delay: {{ loop.index0 * 0.1 }}s">
+                    {{ message }}
+                    <button type="button" class="absolute top-0 right-0 mt-3 mr-3 text-gray-500 hover:text-gray-700 transition-colors" onclick="this.parentNode.remove()">
+                        <svg class="h-4 w-4" fill="currentColor" viewBox="0 0 20 20">
+                            <path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd"></path>
+                        </svg>
+                    </button>
+                </div>
+                {% endfor %}
             </div>
-            {% endfor %}
+            {% endif %}
+            {% endwith %}
+
+            {% block content %}{% endblock %}
         </div>
-        {% endif %}
-        {% endwith %}
-    {% endif %}
-    
-    {% block content %}{% endblock %}
     </div>
+    {% endif %}
 
     {% if request.endpoint not in ['login', 'register'] %}
-    <footer class="mt-auto py-6 bg-gray-900 text-gray-300">
+    <footer class="mt-auto py-8 text-gray-600" style="background: linear-gradient(135deg, #f8f9fd 0%, #f0f2f8 100%); border-top: 1px solid rgba(69, 137, 235, 0.1);">
         <div class="container mx-auto px-4">
             <div class="text-center">
                 <div class="text-sm">
-                    © <a href="https://github.com/Qianxia666/feedback-platform" target="_blank" class="hover:underline">feedback-platform</a>
+                    © <a href="https://github.com/Qianxia666/feedback-platform" target="_blank" class="hover:text-blue-600 transition-colors duration-300 font-medium" style="color: #4589EB;">feedback-platform</a>
                 </div>
+
             </div>
         </div>
     </footer>
@@ -162,7 +256,7 @@
             const mobileMenu = document.getElementById('mobile-menu');
             const menuIcon = document.getElementById('menu-icon');
             const closeIcon = document.getElementById('close-icon');
-            
+
             if (mobileMenu.classList.contains('hidden')) {
                 mobileMenu.classList.remove('hidden');
                 menuIcon.classList.add('hidden');
@@ -171,6 +265,25 @@
                 mobileMenu.classList.add('hidden');
                 menuIcon.classList.remove('hidden');
                 closeIcon.classList.add('hidden');
+            }
+        });
+
+        // 管理员浮动菜单切换
+        document.addEventListener('DOMContentLoaded', function() {
+            const adminMenuToggle = document.getElementById('admin-menu-toggle');
+            const adminMenu = document.getElementById('admin-menu');
+
+            if (adminMenuToggle && adminMenu) {
+                adminMenuToggle.addEventListener('click', function() {
+                    adminMenu.classList.toggle('hidden');
+                });
+
+                // 点击外部关闭菜单
+                document.addEventListener('click', function(event) {
+                    if (!adminMenuToggle.contains(event.target) && !adminMenu.contains(event.target)) {
+                        adminMenu.classList.add('hidden');
+                    }
+                });
             }
         });
     </script>
