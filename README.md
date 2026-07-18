@@ -49,6 +49,9 @@
 
 3. **启动服务**
    ```bash
+   # 建议在首次启动前设置管理员密码
+   export ADMIN_PASSWORD='请替换为强密码'
+
    # 后台启动
    docker-compose up -d
    
@@ -58,8 +61,9 @@
 
 4. **访问应用**
    - 地址：http://localhost:5000
-   - 默认管理员账户：`admin` / `admin`
-   - ⚠️ **请立即修改默认密码！**
+   - 管理员账户：`admin` / `$ADMIN_PASSWORD`（未设置时为 `admin`）
+   - 会话密钥未设置时会自动生成并保存在数据卷中
+   - ⚠️ **首次启动前请设置强管理员密码！**
 
 
 ## 本地开发
@@ -77,20 +81,28 @@
    cd feedback-platform
    ```
 
-4. **安装依赖**
+2. **安装依赖**
    ```bash
    pip install -r requirements.txt
    ```
 
-5. **启动开发服务器**
+3. **启动开发服务器**
    ```bash
+   # 可选：仅开发环境启用调试和热重载
+   export FLASK_DEBUG=1
    python app.py
    ```
 
-6. **访问应用**
+4. **访问应用**
    - 地址：http://localhost:5000
-   - 开发模式支持热重载
-   - 默认管理员账户：`admin` / `admin`
+   - 设置 `FLASK_DEBUG=1` 后支持调试和热重载
+   - 管理员账户：`admin` / `$ADMIN_PASSWORD`（首次初始化未设置时为 `admin`）
+
+### 运行测试
+
+```bash
+python -m unittest discover -s tests -v
+```
 
 ## 项目结构
 
@@ -104,16 +116,15 @@ feedback-platform/
 ├── Dockerfile            # Docker构建文件
 ├── docker-compose.yml    # Docker Compose配置
 ├── static/               # 静态资源
-│   ├── css/              # 样式文件
-│   └── js/               # JavaScript文件
+│   └── css/              # 样式文件
 └── templates/            # HTML模板
 ```
 
 ## 默认账户
 
-- **管理员账户**：
+- **管理员账户（首次初始化）**：
   - 用户名：`admin`
-  - 密码：`admin`
+  - 密码：环境变量 `ADMIN_PASSWORD`，未设置时为 `admin`
   - ⚠️ **请在首次登录后立即修改默认密码！**
 
 ## 用户角色
@@ -121,6 +132,6 @@ feedback-platform/
 | 角色 | 权限说明 |
 |------|----------|
 | 👤 **普通用户** | 发布反馈、评论，管理自己的内容 |
-| 👨‍💼 **子管理员** | 管理所有反馈和评论，置顶重要反馈 |
+| 👨‍💼 **子管理员** | 管理普通用户、反馈和评论，置顶重要反馈 |
 | 👑 **管理员** | 拥有所有权限，包括用户管理、权限分配 |
-| 🚶 **游客** | 无需注册，可发布反馈和评论（需审核） |
+| 🚶 **游客** | 无需注册，可发布反馈和评论；反馈发布后需审核 |

@@ -248,7 +248,7 @@
     <!-- 悬浮加号按钮 -->
     {% if current_user.is_authenticated and not include_deleted and not include_pending %}
     <div class="fixed bottom-6 right-6 z-50">
-        <a href="{{ url_for('create_post') }}" class="floating-add-btn bg-blue-600 hover:bg-blue-700 text-white rounded-full w-14 h-14 flex items-center justify-center shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-110" style="background-color: #4589EB;">
+        <a href="{{ url_for('create_post') }}" class="floating-add-btn bg-blue-600 hover:bg-blue-700 text-white rounded-full w-14 h-14 flex items-center justify-center shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-110" aria-label="发布反馈" title="发布反馈" style="background-color: #4589EB;">
             <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
             </svg>

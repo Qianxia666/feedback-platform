@@ -12,9 +12,11 @@ services:
     volumes:
       - feedback-data:/app/data
     environment:
-      - SECRET_KEY=${SECRET_KEY:-your-secure-secret-key}
+      - SECRET_KEY=${SECRET_KEY:-}
+      - ADMIN_PASSWORD=${ADMIN_PASSWORD:-admin}
       - FLASK_APP=app.py
       - FLASK_ENV=production
+      - FLASK_HOST=0.0.0.0
       - DB_DIR=/app/data
     restart: unless-stopped
     networks:

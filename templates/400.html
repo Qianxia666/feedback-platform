@@ -1,0 +1,9 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="max-w-xl mx-auto py-16 text-center">
+    <h1 class="text-3xl font-bold text-gray-900 mb-4">请求无效</h1>
+    <p class="text-gray-600 mb-8">页面已过期或请求内容不完整，请刷新后重试。</p>
+    <a href="{{ url_for('index') }}" class="inline-flex px-4 py-2 text-white rounded hover:opacity-90 transition" style="background-color: #4589EB;">返回首页</a>
+</div>
+{% endblock %}

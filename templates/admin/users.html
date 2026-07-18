@@ -84,29 +84,38 @@
 
                                 {% if current_user.is_admin %}
                                 {% if not user.is_admin and not user.is_sub_admin %}
-                                <a href="{{ url_for('promote_user', user_id=user.id, role='sub_admin') }}" class="inline-flex items-center px-3 py-1.5 text-xs font-medium rounded-lg transition-all duration-200 hover:shadow-md" style="background-color: #4589EB; color: white;">
+                                <form method="post" action="{{ url_for('promote_user', user_id=user.id, role='sub_admin') }}" class="inline">
+                                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                    <button type="submit" class="inline-flex items-center px-3 py-1.5 text-xs font-medium rounded-lg transition-all duration-200 hover:shadow-md" style="background-color: #4589EB; color: white;">
                                     <svg class="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 11l5-5m0 0l5 5m-5-5v12"></path>
                                     </svg>
                                     提升为子管理员
-                                </a>
+                                    </button>
+                                </form>
                                 {% elif user.is_sub_admin %}
-                                <a href="{{ url_for('demote_user', user_id=user.id) }}" class="inline-flex items-center px-3 py-1.5 text-xs font-medium rounded-lg transition-all duration-200 hover:shadow-md" style="background-color: #f59e0b; color: white;">
+                                <form method="post" action="{{ url_for('demote_user', user_id=user.id) }}" class="inline">
+                                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                    <button type="submit" class="inline-flex items-center px-3 py-1.5 text-xs font-medium rounded-lg transition-all duration-200 hover:shadow-md" style="background-color: #f59e0b; color: white;">
                                     <svg class="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 13l-5 5m0 0l-5-5m5 5V6"></path>
                                     </svg>
                                     降级
-                                </a>
+                                    </button>
+                                </form>
                                 {% endif %}
                                 {% endif %}
 
                                 {% if user.is_banned %}
-                                <a href="{{ url_for('unban_user', user_id=user.id) }}" class="inline-flex items-center px-3 py-1.5 text-xs font-medium rounded-lg transition-all duration-200 hover:shadow-md" style="background-color: #10b981; color: white;">
+                                <form method="post" action="{{ url_for('unban_user', user_id=user.id) }}" class="inline">
+                                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                    <button type="submit" class="inline-flex items-center px-3 py-1.5 text-xs font-medium rounded-lg transition-all duration-200 hover:shadow-md" style="background-color: #10b981; color: white;">
                                     <svg class="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
                                     </svg>
                                     解除封禁
-                                </a>
+                                    </button>
+                                </form>
                                 {% else %}
                                 {% if user.id != current_user.id %}
                                 <a href="{{ url_for('ban_user', user_id=user.id) }}" class="inline-flex items-center px-3 py-1.5 text-xs font-medium rounded-lg transition-all duration-200 hover:shadow-md" style="background-color: #ef4444; color: white;">

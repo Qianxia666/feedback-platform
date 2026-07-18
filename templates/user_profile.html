@@ -90,12 +90,15 @@
                     </a>
                     
                     {% if user.is_banned %}
-                    <a href="{{ url_for('unban_user', user_id=user.id) }}" class="inline-flex items-center px-4 py-2 bg-green-600 text-white hover:bg-green-700 rounded-lg transition-colors shadow-sm text-sm">
+                    <form method="post" action="{{ url_for('unban_user', user_id=user.id) }}" class="inline">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                        <button type="submit" class="inline-flex items-center px-4 py-2 bg-green-600 text-white hover:bg-green-700 rounded-lg transition-colors shadow-sm text-sm">
                         <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
                         </svg>
                         解除封禁
-                    </a>
+                        </button>
+                    </form>
                     {% else %}
                     <a href="{{ url_for('ban_user', user_id=user.id) }}" class="inline-flex items-center px-4 py-2 bg-red-600 text-white hover:bg-red-700 rounded-lg transition-colors shadow-sm text-sm">
                         <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -107,19 +110,25 @@
                     
                     {% if current_user.is_admin %}
                     {% if not user.is_admin and not user.is_sub_admin %}
-                    <a href="{{ url_for('promote_user', user_id=user.id, role='sub_admin') }}" class="inline-flex items-center px-4 py-2 text-white hover:opacity-90 rounded-lg transition-colors shadow-sm text-sm" style="background-color: #4589EB;">
+                    <form method="post" action="{{ url_for('promote_user', user_id=user.id, role='sub_admin') }}" class="inline">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                        <button type="submit" class="inline-flex items-center px-4 py-2 text-white hover:opacity-90 rounded-lg transition-colors shadow-sm text-sm" style="background-color: #4589EB;">
                         <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"></path>
                         </svg>
                         设为子管理员
-                    </a>
+                        </button>
+                    </form>
                     {% elif user.is_sub_admin %}
-                    <a href="{{ url_for('demote_user', user_id=user.id) }}" class="inline-flex items-center px-4 py-2 bg-yellow-500 text-white hover:bg-yellow-600 rounded-lg transition-colors shadow-sm text-sm">
+                    <form method="post" action="{{ url_for('demote_user', user_id=user.id) }}" class="inline">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                        <button type="submit" class="inline-flex items-center px-4 py-2 bg-yellow-500 text-white hover:bg-yellow-600 rounded-lg transition-colors shadow-sm text-sm">
                         <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12H9m12 0a9 9 0 11-18 0 9 9 0 0118 0z"></path>
                         </svg>
                         取消子管理员
-                    </a>
+                        </button>
+                    </form>
                     {% endif %}
                     {% endif %}
                 </div>

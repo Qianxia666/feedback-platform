@@ -4,8 +4,10 @@
 <div class="max-w-6xl mx-auto">
     <div class="mb-8 flex justify-between items-center">
         <h1 class="text-3xl md:text-4xl font-bold text-gray-900 mb-2 tracking-tight relative pl-4 border-l-4" style="border-left-color: #4589EB;">
-            {% if show_deleted %}
+            {% if view == 'deleted' %}
             已删除反馈
+            {% elif view == 'rejected' %}
+            已拒绝反馈
             {% else %}
             待审核反馈
             {% endif %}
@@ -20,7 +22,7 @@
     
     <!-- 过滤选项 -->
     <div class="mb-6 flex items-center space-x-4 border-b border-gray-200 pb-4">
-        <a href="{{ url_for('admin_pending_posts') }}" class="px-4 py-2 rounded-lg {% if not show_deleted %}text-white{% else %}bg-gray-100 text-gray-700 hover:bg-gray-200{% endif %} transition-colors" {% if not show_deleted %}style="background-color: #4589EB;"{% endif %}>
+        <a href="{{ url_for('admin_pending_posts', status='pending') }}" class="px-4 py-2 rounded-lg {% if view == 'pending' %}text-white{% else %}bg-gray-100 text-gray-700 hover:bg-gray-200{% endif %} transition-colors" {% if view == 'pending' %}style="background-color: #4589EB;"{% endif %}>
             <div class="flex items-center">
                 <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
@@ -28,7 +30,15 @@
                 待审核内容
             </div>
         </a>
-        <a href="{{ url_for('admin_pending_posts', show_deleted=1) }}" class="px-4 py-2 rounded-lg {% if show_deleted %}text-white{% else %}bg-gray-100 text-gray-700 hover:bg-gray-200{% endif %} transition-colors" {% if show_deleted %}style="background-color: #4589EB;"{% endif %}>
+        <a href="{{ url_for('admin_pending_posts', status='rejected') }}" class="px-4 py-2 rounded-lg {% if view == 'rejected' %}text-white{% else %}bg-gray-100 text-gray-700 hover:bg-gray-200{% endif %} transition-colors" {% if view == 'rejected' %}style="background-color: #4589EB;"{% endif %}>
+            <div class="flex items-center">
+                <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                </svg>
+                已拒绝内容
+            </div>
+        </a>
+        <a href="{{ url_for('admin_pending_posts', status='deleted') }}" class="px-4 py-2 rounded-lg {% if view == 'deleted' %}text-white{% else %}bg-gray-100 text-gray-700 hover:bg-gray-200{% endif %} transition-colors" {% if view == 'deleted' %}style="background-color: #4589EB;"{% endif %}>
             <div class="flex items-center">
                 <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
@@ -47,8 +57,10 @@
                     <div class="border-b border-gray-100 px-6 py-4 flex justify-between items-center bg-gray-50">
                         <h2 class="text-xl font-semibold text-gray-900 flex items-center">
                             {{ post.title }}
-                            {% if show_deleted %}
+                            {% if view == 'deleted' %}
                             <span class="bg-red-100 text-red-700 text-xs px-2 py-0.5 rounded ml-3 uppercase tracking-wider font-semibold">已删除</span>
+                            {% elif view == 'rejected' %}
+                            <span class="bg-red-100 text-red-700 text-xs px-2 py-0.5 rounded ml-3 uppercase tracking-wider font-semibold">已拒绝</span>
                             {% else %}
                             <span class="bg-yellow-100 text-yellow-700 text-xs px-2 py-0.5 rounded ml-3 uppercase tracking-wider font-semibold">待审核</span>
                             {% endif %}
@@ -84,15 +96,29 @@
                         
                         <div class="flex justify-between">
                             <div class="flex space-x-3">
-                                {% if show_deleted %}
-                                <a href="{{ url_for('restore_post', post_id=post.id) }}" class="inline-flex items-center px-4 py-2 bg-green-50 text-green-700 hover:bg-green-100 rounded-lg transition-colors text-sm border border-green-200">
+                                {% if view == 'deleted' %}
+                                <form method="post" action="{{ url_for('restore_post', post_id=post.id) }}">
+                                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                    <button type="submit" class="inline-flex items-center px-4 py-2 bg-green-50 text-green-700 hover:bg-green-100 rounded-lg transition-colors text-sm border border-green-200">
                                     <svg class="h-4 w-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>
                                     </svg>
                                     恢复反馈
-                                </a>
+                                    </button>
+                                </form>
+                                {% elif view == 'rejected' %}
+                                <form method="post" action="{{ url_for('approve_post', post_id=post.id) }}">
+                                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                    <button type="submit" class="inline-flex items-center px-4 py-2 bg-green-50 text-green-700 hover:bg-green-100 rounded-lg transition-colors text-sm border border-green-200">
+                                        <svg class="h-4 w-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                                        </svg>
+                                        重新通过
+                                    </button>
+                                </form>
                                 {% else %}
                                 <form method="post" action="{{ url_for('approve_post', post_id=post.id) }}">
+                                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                                     <button type="submit" class="inline-flex items-center px-4 py-2 bg-green-50 text-green-700 hover:bg-green-100 rounded-lg transition-colors text-sm border border-green-200">
                                         <svg class="h-4 w-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
@@ -101,6 +127,7 @@
                                     </button>
                                 </form>
                                 <form method="post" action="{{ url_for('reject_post', post_id=post.id) }}">
+                                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                                     <button type="submit" class="inline-flex items-center px-4 py-2 bg-red-50 text-red-700 hover:bg-red-100 rounded-lg transition-colors text-sm border border-red-200">
                                         <svg class="h-4 w-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
@@ -126,7 +153,7 @@
             <div class="mt-12 flex justify-center">
                 <nav class="modern-pagination" aria-label="Pagination">
                     {% if posts.has_prev %}
-                    <a href="{{ url_for('admin_pending_posts', page=posts.prev_num, show_deleted=show_deleted) }}" class="pagination-btn pagination-btn-prev">
+                    <a href="{{ url_for('admin_pending_posts', page=posts.prev_num, status=view) }}" class="pagination-btn pagination-btn-prev">
                         <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
                         </svg>
@@ -150,7 +177,7 @@
                     </div>
 
                     {% if posts.has_next %}
-                    <a href="{{ url_for('admin_pending_posts', page=posts.next_num, show_deleted=show_deleted) }}" class="pagination-btn pagination-btn-next">
+                    <a href="{{ url_for('admin_pending_posts', page=posts.next_num, status=view) }}" class="pagination-btn pagination-btn-next">
                         <span class="mr-2">下一页</span>
                         <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
@@ -171,9 +198,12 @@
                 <svg class="w-20 h-20 text-gray-300 mb-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
                 </svg>
-                {% if show_deleted %}
+                {% if view == 'deleted' %}
                 <p class="text-gray-500 text-2xl font-bold mb-2">没有已删除内容</p>
                 <p class="text-gray-400 text-lg">当前没有已删除的反馈</p>
+                {% elif view == 'rejected' %}
+                <p class="text-gray-500 text-2xl font-bold mb-2">没有已拒绝内容</p>
+                <p class="text-gray-400 text-lg">当前没有已拒绝的游客反馈</p>
                 {% else %}
                 <p class="text-gray-500 text-2xl font-bold mb-2">没有待审核内容</p>
                 <p class="text-gray-400 text-lg">当前没有需要审核的游客帖子</p>

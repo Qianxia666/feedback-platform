@@ -1,6 +1,9 @@
 {% extends "base.html" %}
 
 {% block content %}
+{% macro csrf_field() -%}
+<input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+{%- endmacro %}
 <div class="max-w-4xl mx-auto">
     <!-- 返回按钮 -->
     <a href="{{ url_for('index') }}" class="inline-flex items-center text-gray-600 hover:text-black mb-8 group">
@@ -34,17 +37,21 @@
             
             <div class="flex space-x-2">
                 {% if post.is_deleted and (current_user.is_admin or current_user.is_sub_admin) %}
-                <a href="{{ url_for('restore_post', post_id=post.id) }}" class="inline-flex items-center px-3 py-2 bg-gray-50 text-gray-700 hover:bg-gray-100 rounded-lg transition-colors text-sm border border-gray-200">
+                <form method="post" action="{{ url_for('restore_post', post_id=post.id) }}" class="inline">
+                    {{ csrf_field() }}
+                    <button type="submit" class="inline-flex items-center px-3 py-2 bg-gray-50 text-gray-700 hover:bg-gray-100 rounded-lg transition-colors text-sm border border-gray-200">
                     <svg class="h-4 w-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>
                     </svg>
                     恢复反馈
-                </a>
+                    </button>
+                </form>
                 {% endif %}
                 
                 {% if not post.is_deleted and (current_user.is_admin or current_user.is_sub_admin) %}
                     {% if post.is_pinned %}
                     <form method="post" action="{{ url_for('unpin_post', post_id=post.id) }}" class="inline">
+                        {{ csrf_field() }}
                         <button type="submit" class="inline-flex items-center px-3 py-2 bg-gray-50 text-gray-700 hover:bg-gray-100 rounded-lg transition-colors text-sm border border-gray-200">
                             <svg class="h-4 w-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12H9m12 0a9 9 0 11-18 0 9 9 0 0118 0z"></path>
@@ -54,6 +61,7 @@
                     </form>
                     {% else %}
                     <form method="post" action="{{ url_for('pin_post', post_id=post.id) }}" class="inline">
+                        {{ csrf_field() }}
                         <button type="submit" class="inline-flex items-center px-3 py-2 bg-gray-50 text-gray-700 hover:bg-gray-100 rounded-lg transition-colors text-sm border border-gray-200">
                             <svg class="h-4 w-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
@@ -104,6 +112,7 @@
                     {% if not post.is_deleted and (current_user.id == post.user_id or current_user.is_admin or current_user.is_sub_admin) %}
                     {% if current_user.username != 'tourist' or current_user.is_admin or current_user.is_sub_admin %}
                     <form method="post" action="{{ url_for('delete_post', post_id=post.id) }}" class="inline" onsubmit="return confirm('确定要删除这条反馈吗？');">
+                        {{ csrf_field() }}
                         <button type="submit" class="inline-flex items-center px-3 py-2 bg-gray-50 text-gray-700 hover:bg-gray-100 rounded-lg transition-colors text-sm border border-gray-200">
                             <svg class="h-4 w-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
@@ -167,12 +176,15 @@
                             </h3>
                             
                             {% if current_user.is_authenticated and (current_user.id == post.user_id or current_user.is_admin or current_user.is_sub_admin) %}
-                            <a href="{{ url_for('cancel_accept_comment', id=comment.id) }}" class="text-xs text-gray-600 hover:text-black bg-gray-50 px-3 py-1.5 rounded-md flex items-center transition-colors duration-200 border border-gray-200 h-7">
+                            <form method="post" action="{{ url_for('cancel_accept_comment', id=comment.id) }}" class="inline">
+                                {{ csrf_field() }}
+                                <button type="submit" class="text-xs text-gray-600 hover:text-black bg-gray-50 px-3 py-1.5 rounded-md flex items-center transition-colors duration-200 border border-gray-200 h-7">
                                 <svg class="h-3 w-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
                                 </svg>
                                 取消采纳
-                            </a>
+                                </button>
+                            </form>
                             {% endif %}
                         </div>
                         <div class="flex items-center mb-2">
@@ -243,11 +255,10 @@
                 {% else %}
                 <form method="post" action="{{ url_for('post', id=post.id) }}" id="commentForm" class="modern-form">
                     {{ form.hidden_tag() }}
-                    {{ form.parent_id }}
                     <div id="replyingTo" class="mb-6 hidden" style="background: linear-gradient(135deg, rgba(59, 130, 246, 0.1) 0%, rgba(29, 78, 216, 0.1) 100%); border-left: 4px solid #3b82f6; padding: 16px; border-radius: 12px;">
                         <div class="flex justify-between items-center">
                             <span class="text-sm text-gray-700 font-medium">回复给: <span id="replyToUsername" class="font-semibold text-blue-600"></span></span>
-                            <button type="button" id="cancelReply" class="text-gray-500 hover:text-red-500 transition-colors p-1 rounded-full hover:bg-red-50">
+                            <button type="button" id="cancelReply" class="text-gray-500 hover:text-red-500 transition-colors p-1 rounded-full hover:bg-red-50" aria-label="取消回复" title="取消回复">
                                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
                                 </svg>
@@ -283,7 +294,7 @@
             {% if root_comments %}
                 <div class="comments-list">
                     {% for comment in root_comments %}
-                    <article class="comment-item {% if comment.is_accepted %}comment-accepted{% endif %}" data-comment-id="{{ comment.id }}">
+                    <article class="comment-item {% if comment.is_accepted and not comment.is_deleted %}comment-accepted{% endif %}" data-comment-id="{{ comment.id }}">
                         <div class="comment-layout">
                             <!-- 用户头像 -->
                             <div class="comment-avatar">
@@ -314,7 +325,7 @@
                                     </div>
 
                                     <!-- 已采纳标识 -->
-                                    {% if comment.is_accepted %}
+                                    {% if comment.is_accepted and not comment.is_deleted %}
                                     <div class="accepted-indicator">
                                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
@@ -351,16 +362,19 @@
                                 <!-- 操作按钮 -->
                                 <div class="comment-actions">
                                     {% if comment.is_deleted and (current_user.is_admin or current_user.is_sub_admin) %}
-                                    <a href="{{ url_for('restore_comment', id=comment.id) }}" class="action-btn btn-restore">
+                                    <form method="post" action="{{ url_for('restore_comment', id=comment.id) }}" class="inline">
+                                        {{ csrf_field() }}
+                                        <button type="submit" class="action-btn btn-restore">
                                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>
                                         </svg>
                                         恢复
-                                    </a>
+                                        </button>
+                                    </form>
                                     {% endif %}
 
                                     {% if not comment.is_deleted %}
-                                        {% if current_user.is_authenticated and not post.is_deleted %}
+                                        {% if current_user.is_authenticated and not post.is_deleted and comment.depth < max_comment_depth %}
                                         <button type="button" class="action-btn btn-reply reply-button" data-parent-id="{{ comment.id }}" data-username="{{ comment.user.username }}">
                                             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6"></path>
@@ -370,21 +384,27 @@
                                         {% endif %}
 
                                         {% if current_user.is_authenticated and (current_user.is_admin or current_user.is_sub_admin or current_user.id == post.user_id) and not comment.is_accepted %}
-                                        <a href="{{ url_for('accept_comment', id=comment.id) }}" class="action-btn btn-accept">
+                                        <form method="post" action="{{ url_for('accept_comment', id=comment.id) }}" class="inline">
+                                            {{ csrf_field() }}
+                                            <button type="submit" class="action-btn btn-accept">
                                             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
                                             </svg>
                                             采纳
-                                        </a>
+                                            </button>
+                                        </form>
                                         {% endif %}
 
                                         {% if ((current_user.id == comment.user_id and current_user.username != 'tourist') or current_user.is_admin or current_user.is_sub_admin) %}
-                                        <a href="{{ url_for('delete_comment', id=comment.id) }}" class="action-btn btn-delete" onclick="return confirm('确定要删除此评论吗？')">
+                                        <form method="post" action="{{ url_for('delete_comment', id=comment.id) }}" class="inline" onsubmit="return confirm('确定要删除此评论吗？')">
+                                            {{ csrf_field() }}
+                                            <button type="submit" class="action-btn btn-delete">
                                             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
                                             </svg>
                                             删除
-                                        </a>
+                                            </button>
+                                        </form>
                                         {% endif %}
                                     {% endif %}
                                 </div>
@@ -396,7 +416,7 @@
                     <!-- 使用递归宏来扁平化显示所有回复 -->
                     {% macro render_replies(replies) %}
                         {% for reply in replies %}
-                        <article class="comment-item comment-reply {% if reply.is_accepted %}comment-accepted{% endif %}" data-comment-id="{{ reply.id }}">
+                        <article class="comment-item comment-reply {% if reply.is_accepted and not reply.is_deleted %}comment-accepted{% endif %}" data-comment-id="{{ reply.id }}">
                             <div class="comment-layout">
                                 <!-- 用户头像 -->
                                 <div class="comment-avatar">
@@ -427,7 +447,7 @@
                                         </div>
 
                                         <!-- 已采纳标识 -->
-                                        {% if reply.is_accepted %}
+                                        {% if reply.is_accepted and not reply.is_deleted %}
                                         <div class="accepted-indicator">
                                             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
@@ -472,16 +492,19 @@
                                     <!-- 操作按钮 -->
                                     <div class="comment-actions">
                                         {% if reply.is_deleted and (current_user.is_admin or current_user.is_sub_admin) %}
-                                        <a href="{{ url_for('restore_comment', id=reply.id) }}" class="action-btn btn-restore">
+                                        <form method="post" action="{{ url_for('restore_comment', id=reply.id) }}" class="inline">
+                                            {{ csrf_field() }}
+                                            <button type="submit" class="action-btn btn-restore">
                                             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>
                                             </svg>
                                             恢复
-                                        </a>
+                                            </button>
+                                        </form>
                                         {% endif %}
 
                                         {% if not reply.is_deleted %}
-                                            {% if current_user.is_authenticated and not post.is_deleted %}
+                                            {% if current_user.is_authenticated and not post.is_deleted and reply.depth < max_comment_depth %}
                                             <button type="button" class="action-btn btn-reply reply-button" data-parent-id="{{ reply.id }}" data-username="{{ reply.user.username }}">
                                                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6"></path>
@@ -491,21 +514,27 @@
                                             {% endif %}
 
                                             {% if current_user.is_authenticated and (current_user.is_admin or current_user.is_sub_admin or current_user.id == post.user_id) and not reply.is_accepted %}
-                                            <a href="{{ url_for('accept_comment', id=reply.id) }}" class="action-btn btn-accept">
+                                            <form method="post" action="{{ url_for('accept_comment', id=reply.id) }}" class="inline">
+                                                {{ csrf_field() }}
+                                                <button type="submit" class="action-btn btn-accept">
                                                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
                                                 </svg>
                                                 采纳
-                                            </a>
+                                                </button>
+                                            </form>
                                             {% endif %}
 
                                             {% if ((current_user.id == reply.user_id and current_user.username != 'tourist') or current_user.is_admin or current_user.is_sub_admin) %}
-                                            <a href="{{ url_for('delete_comment', id=reply.id) }}" class="action-btn btn-delete" onclick="return confirm('确定要删除此评论吗？')">
+                                            <form method="post" action="{{ url_for('delete_comment', id=reply.id) }}" class="inline" onsubmit="return confirm('确定要删除此评论吗？')">
+                                                {{ csrf_field() }}
+                                                <button type="submit" class="action-btn btn-delete">
                                                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
                                                 </svg>
                                                 删除
-                                            </a>
+                                                </button>
+                                            </form>
                                             {% endif %}
                                         {% endif %}
                                     </div>

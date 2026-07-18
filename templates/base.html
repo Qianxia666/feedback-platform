@@ -175,7 +175,10 @@
                         {% endif %}
                         <span class="inline-block truncate max-w-24 lg:max-w-none">{{ current_user.username }}</span>
                     </a>
-                    <a class="hover:bg-white hover:bg-opacity-20 px-2 lg:px-3 py-2 rounded transition-colors duration-200 text-sm lg:text-base" href="{{ url_for('logout') }}">注销</a>
+                    <form method="post" action="{{ url_for('logout') }}" class="inline">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                        <button type="submit" class="hover:bg-white hover:bg-opacity-20 px-2 lg:px-3 py-2 rounded transition-colors duration-200 text-sm lg:text-base">注销</button>
+                    </form>
                     {% else %}
                     <a class="hover:bg-white hover:bg-opacity-20 px-2 lg:px-3 py-2 rounded transition-colors duration-200 text-sm lg:text-base" href="{{ url_for('login') }}">登录</a>
                     <a class="bg-white hover:bg-gray-200 px-2 lg:px-3 py-2 rounded transition-colors duration-200 font-medium text-sm lg:text-base" href="{{ url_for('register') }}" style="color: #4589EB;">注册</a>
@@ -195,7 +198,10 @@
                         {% endif %}
                         <span class="mobile-text-base">{{ current_user.username }}</span>
                     </a>
-                    <a class="hover:bg-white hover:bg-opacity-20 px-3 py-3 rounded transition-colors duration-200 mobile-btn mobile-text-base" href="{{ url_for('logout') }}">注销</a>
+                    <form method="post" action="{{ url_for('logout') }}">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                        <button type="submit" class="w-full text-left hover:bg-white hover:bg-opacity-20 px-3 py-3 rounded transition-colors duration-200 mobile-btn mobile-text-base">注销</button>
+                    </form>
                     {% else %}
                     <a class="hover:bg-white hover:bg-opacity-20 px-3 py-3 rounded transition-colors duration-200 mobile-btn mobile-text-base" href="{{ url_for('login') }}">登录</a>
                     <a class="bg-white hover:bg-gray-200 px-3 py-3 rounded transition-colors duration-200 text-center font-medium mobile-btn mobile-text-base" href="{{ url_for('register') }}" style="color: #4589EB;">注册</a>
@@ -221,7 +227,7 @@
                 {% for message in messages %}
                 <div class="modern-form border-l-4 border-blue-500 text-gray-800 p-4 mb-3 relative fade-in-up" role="alert" style="animation-delay: {{ loop.index0 * 0.1 }}s">
                     {{ message }}
-                    <button type="button" class="absolute top-0 right-0 mt-3 mr-3 text-gray-500 hover:text-gray-700 transition-colors" onclick="this.parentNode.remove()">
+                    <button type="button" class="absolute top-0 right-0 mt-3 mr-3 text-gray-500 hover:text-gray-700 transition-colors" aria-label="关闭提示" title="关闭提示" onclick="this.parentNode.remove()">
                         <svg class="h-4 w-4" fill="currentColor" viewBox="0 0 20 20">
                             <path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd"></path>
                         </svg>
@@ -242,7 +248,7 @@
         <div class="container mx-auto px-4">
             <div class="text-center">
                 <div class="text-sm">
-                    © <a href="https://github.com/Qianxia666/feedback-platform" target="_blank" class="hover:text-blue-600 transition-colors duration-300 font-medium" style="color: #4589EB;">feedback-platform</a>
+                    © <a href="https://github.com/Qianxia666/feedback-platform" target="_blank" rel="noopener noreferrer" class="hover:text-blue-600 transition-colors duration-300 font-medium" style="color: #4589EB;">feedback-platform</a>
                 </div>
 
             </div>
@@ -252,7 +258,8 @@
 
     <script>
         // 移动端菜单切换
-        document.getElementById('menu-toggle').addEventListener('click', function() {
+        const menuToggle = document.getElementById('menu-toggle');
+        if (menuToggle) menuToggle.addEventListener('click', function() {
             const mobileMenu = document.getElementById('mobile-menu');
             const menuIcon = document.getElementById('menu-icon');
             const closeIcon = document.getElementById('close-icon');
