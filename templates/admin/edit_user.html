@@ -73,7 +73,7 @@
                 
                 <div class="mt-6 border-t border-gray-100 pt-6">
                     <h3 class="text-lg font-semibold text-gray-800 mb-4">用户权限</h3>
-                    
+                    {% if current_user.is_admin %}
                     <div class="space-y-4">
                         <div class="flex items-start">
                             {{ form.is_admin(class="h-5 w-5 border-gray-300 rounded mt-1", style="color: #4589EB; accent-color: #4589EB;", id="is_admin") }}
@@ -95,6 +95,9 @@
                         <p class="text-red-600 text-sm mt-1">{{ form.is_admin.errors[0] if form.is_admin.errors else form.is_sub_admin.errors[0] }}</p>
                         {% endif %}
                     </div>
+                    {% else %}
+                    <p class="text-sm text-gray-500">子管理员不能修改用户角色。</p>
+                    {% endif %}
                 </div>
                 
                 <div class="mt-6 border-t border-gray-100 pt-6">

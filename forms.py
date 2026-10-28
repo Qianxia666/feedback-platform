@@ -1,8 +1,12 @@
+import re
 from flask_wtf import FlaskForm
 from wtforms import StringField, PasswordField, TextAreaField, SubmitField, BooleanField, IntegerField
 from wtforms.validators import DataRequired, Email, Length, EqualTo, ValidationError, Optional, NumberRange
 from wtforms.widgets import HiddenInput
 from models import User
+
+
+RESERVED_USERNAMES = {'admin', 'tourist'}
 
 
 def strip_value(value):
@@ -12,92 +16,107 @@ def strip_value(value):
 def normalize_email(value):
     return value.strip().lower() if isinstance(value, str) else value
 
+
+def validate_available_username(value, original_username=None):
+    normalized = (value or '').casefold()
+    original_normalized = (original_username or '').casefold()
+    if normalized in RESERVED_USERNAMES and normalized != original_normalized:
+        raise ValidationError('该用户名为系统保留账号，不能使用')
+    existing = User.get_by_username_ci(value)
+    if existing is not None and (original_username is None or existing.username.casefold() != original_normalized):
+        raise ValidationError('该用户名已被使用')
+
+
+def validate_username_characters(form, field):
+    if not re.fullmatch(r'[\w.-]+', field.data or '', flags=re.UNICODE):
+        raise ValidationError('用户名只能包含字母、数字、下划线、点或连字符')
+
+
 class LoginForm(FlaskForm):
-    username = StringField('用户名', validators=[DataRequired()], filters=[strip_value])
-    password = PasswordField('密码', validators=[DataRequired()])
+    username = StringField(
+        '用户名', validators=[DataRequired(), Length(min=1, max=20)], filters=[strip_value]
+    )
+    password = PasswordField('密码', validators=[DataRequired(), Length(max=256)])
     remember_me = BooleanField('记住我')
     submit = SubmitField('登录')
 
+
 class RegisterForm(FlaskForm):
-    username = StringField('用户名', validators=[DataRequired(), Length(min=3, max=20)], filters=[strip_value])
-    email = StringField('电子邮箱', validators=[DataRequired(), Email()], filters=[normalize_email])
-    password = PasswordField('密码', validators=[DataRequired(), Length(min=6)])
+    username = StringField('用户名', validators=[DataRequired(), Length(min=3, max=20), validate_username_characters], filters=[strip_value])
+    email = StringField('电子邮箱', validators=[DataRequired(), Email(), Length(max=254)], filters=[normalize_email])
+    password = PasswordField('密码', validators=[DataRequired(), Length(min=8, max=128)])
     password2 = PasswordField('确认密码', validators=[DataRequired(), EqualTo('password', message='两次输入的密码不一致')])
     submit = SubmitField('注册')
 
     def validate_username(self, username):
-        user = User.get_by_username(username.data)
-        if user is not None:
-            raise ValidationError('该用户名已被使用')
+        validate_available_username(username.data)
 
     def validate_email(self, email):
-        conn = User.get_by_email(email.data)
-        if conn is not None:
+        user = User.get_by_email(email.data)
+        if user is not None:
             raise ValidationError('该邮箱已被注册')
+
 
 class PostForm(FlaskForm):
     title = StringField('标题', validators=[DataRequired(), Length(min=3, max=100)], filters=[strip_value])
     content = TextAreaField('内容', validators=[DataRequired(), Length(min=10, max=1000)], filters=[strip_value])
     submit = SubmitField('发布')
 
+
 class CommentForm(FlaskForm):
     content = TextAreaField('评论', validators=[DataRequired(), Length(min=2, max=500)], filters=[strip_value])
     parent_id = IntegerField('回复评论ID', validators=[Optional(), NumberRange(min=1)], widget=HiddenInput())
     submit = SubmitField('发表评论')
 
+
 class EditProfileForm(FlaskForm):
-    username = StringField('用户名', validators=[DataRequired(), Length(min=3, max=20)], filters=[strip_value])
-    email = StringField('电子邮箱', validators=[DataRequired(), Email()], filters=[normalize_email])
-    current_password = PasswordField('当前密码', validators=[Optional()])
-    password = PasswordField('新密码', validators=[Optional(), Length(min=6)])
+    username = StringField('用户名', validators=[DataRequired(), Length(min=3, max=20), validate_username_characters], filters=[strip_value])
+    email = StringField('电子邮箱', validators=[DataRequired(), Email(), Length(max=254)], filters=[normalize_email])
+    current_password = PasswordField('当前密码', validators=[Optional(), Length(max=256)])
+    password = PasswordField('新密码', validators=[Optional(), Length(min=8, max=128)])
     password2 = PasswordField('确认密码', validators=[EqualTo('password', message='两次输入的密码不一致')])
     submit = SubmitField('保存修改')
 
     def __init__(self, original_username, original_email, *args, **kwargs):
-        super(EditProfileForm, self).__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)
         self.original_username = original_username
         self.original_email = normalize_email(original_email)
 
     def validate_username(self, username):
-        if username.data != self.original_username:
-            user = User.get_by_username(username.data)
-            if user is not None:
-                raise ValidationError('该用户名已被使用')
-    
+        validate_available_username(username.data, self.original_username)
+
     def validate_email(self, email):
         if email.data != self.original_email:
             user = User.get_by_email(email.data)
             if user is not None:
                 raise ValidationError('该邮箱已被注册')
 
+
 class AdminEditProfileForm(FlaskForm):
-    username = StringField('用户名', validators=[DataRequired(), Length(min=3, max=20)], filters=[strip_value])
-    email = StringField('电子邮箱', validators=[DataRequired(), Email()], filters=[normalize_email])
-    password = PasswordField('新密码 (留空则保持不变)', validators=[Optional(), Length(min=6)])
+    username = StringField('用户名', validators=[DataRequired(), Length(min=3, max=20), validate_username_characters], filters=[strip_value])
+    email = StringField('电子邮箱', validators=[DataRequired(), Email(), Length(max=254)], filters=[normalize_email])
+    password = PasswordField('新密码 (留空则保持不变)', validators=[Optional(), Length(min=8, max=128)])
     password2 = PasswordField('确认新密码', validators=[EqualTo('password', message='两次输入的密码不一致')])
     is_admin = BooleanField('管理员权限')
     is_sub_admin = BooleanField('子管理员权限')
     is_banned = BooleanField('封禁用户')
-    banned_reason = StringField('封禁原因', validators=[Optional(), Length(max=200)])
+    banned_reason = StringField('封禁原因', validators=[Optional(), Length(max=200)], filters=[strip_value])
     submit = SubmitField('保存修改')
 
     def __init__(self, original_username, original_email, *args, **kwargs):
-        super(AdminEditProfileForm, self).__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)
         self.original_username = original_username
         self.original_email = normalize_email(original_email)
 
     def validate_username(self, username):
-        if username.data != self.original_username:
-            user = User.get_by_username(username.data)
-            if user is not None:
-                raise ValidationError('该用户名已被使用')
-    
+        validate_available_username(username.data, self.original_username)
+
     def validate_email(self, email):
         if email.data != self.original_email:
             user = User.get_by_email(email.data)
             if user is not None:
                 raise ValidationError('该邮箱已被注册')
-    
+
     def validate_is_admin(self, is_admin):
         if is_admin.data and self.is_sub_admin.data:
             raise ValidationError('用户不能同时是管理员和子管理员')
@@ -106,7 +125,9 @@ class AdminEditProfileForm(FlaskForm):
         if is_banned.data and not strip_value(self.banned_reason.data or ''):
             raise ValidationError('封禁用户时必须填写封禁原因')
 
-class BanUserForm(FlaskForm):
-    reason = TextAreaField('封禁原因', validators=[DataRequired(), Length(min=5, max=200)])
-    submit = SubmitField('确认封禁')
 
+class BanUserForm(FlaskForm):
+    reason = TextAreaField(
+        '封禁原因', validators=[DataRequired(), Length(min=5, max=200)], filters=[strip_value]
+    )
+    submit = SubmitField('确认封禁')

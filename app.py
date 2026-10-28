@@ -6,7 +6,7 @@ from markupsafe import Markup, escape
 from urllib.parse import urlsplit
 from config import Config
 from models import (User, Post, Comment, Pagination, init_db, get_db_connection,
-                    ActivityLog, Settings)
+                    fetch_one, fetch_all, ActivityLog, Settings)
 from forms import LoginForm, RegisterForm, PostForm, CommentForm, EditProfileForm, AdminEditProfileForm, BanUserForm
 import os
 import sqlite3
@@ -23,8 +23,15 @@ def create_app(config_class=Config):
         pages = max(1, (total + per_page - 1) // per_page)
         return min(max(1, requested_page), pages)
 
-    def nullable_bool(value):
-        return None if value is None else bool(value)
+    def record_activity(**kwargs):
+        """Write an audit event without turning a completed action into a 500."""
+        try:
+            ActivityLog.create_log(**kwargs)
+        except sqlite3.Error:
+            app.logger.exception(
+                '活动日志写入失败: action=%s target=%s:%s',
+                kwargs.get('action'), kwargs.get('target_type'), kwargs.get('target_id')
+            )
     
     # 添加nl2br过滤器
     @app.template_filter('nl2br')
@@ -88,20 +95,38 @@ def create_app(config_class=Config):
     login_manager = LoginManager(app)
     login_manager.login_view = 'login'
     login_manager.login_message = '请先登录以访问此页面'
+    login_manager.session_protection = 'strong'
     
     @login_manager.user_loader
-    def load_user(id):
+    def load_user(session_id):
         try:
-            return User.get_by_id(int(id))
+            raw = str(session_id)
+            if ':' in raw:
+                user_id, auth_version = raw.rsplit(':', 1)
+                user = User.get_by_id(int(user_id))
+                if user is None or user.auth_version != int(auth_version):
+                    return None
+                return user
+            user = User.get_by_id(int(raw))
+            if user is None or user.auth_version != 0:
+                return None
+            return user
         except (TypeError, ValueError):
             return None
     
     # 每次请求前更新用户最后活跃时间并加载设置
     @app.before_request
     def before_request():
-        if request.endpoint == 'static':
+        if request.endpoint in {'static', 'healthz'}:
             return None
-        g.settings = Settings.get_dict()
+        # Set a safe fallback before touching SQLite so the 500 handler can
+        # still render if settings storage is temporarily unavailable.
+        g.settings = {}
+        try:
+            g.settings = Settings.get_dict()
+        except sqlite3.Error:
+            app.logger.exception('读取系统设置失败')
+            raise
         if current_user.is_authenticated:
             # 如果用户被封禁，强制登出
             if current_user.is_banned and request.endpoint not in ['logout', 'static']:
@@ -114,24 +139,66 @@ def create_app(config_class=Config):
                 logout_user()
                 flash('管理员已关闭游客访问，请使用注册账号')
                 return redirect(url_for('login'))
-            current_user.update_last_seen()
-        # 检查用户登录状态
-        if not current_user.is_authenticated and request.endpoint not in ['login', 'register', 'static', 'logout', 'tourist_login'] and not request.path.startswith('/static/'):
+            try:
+                current_user.update_last_seen()
+            except sqlite3.Error:
+                # last_seen is telemetry, not a reason to fail the user's
+                # otherwise valid request when SQLite is briefly busy.
+                app.logger.warning('更新用户活跃时间失败', exc_info=True)
+        # 检查用户登录状态；未知地址（endpoint 为 None）交给 404 处理，
+        # 避免匿名用户把不存在的 URL 误判为“需要登录”。
+        if (not current_user.is_authenticated
+                and request.endpoint is not None
+                and request.endpoint not in ['login', 'register', 'static', 'logout', 'tourist_login']
+                and not request.path.startswith('/static/')):
             flash('请先登录再访问此页面')
             return redirect(url_for('login', next=request.full_path))
+
+    @app.after_request
+    def add_security_headers(response):
+        response.headers.setdefault('X-Content-Type-Options', 'nosniff')
+        response.headers.setdefault('X-Frame-Options', 'DENY')
+        response.headers.setdefault('Referrer-Policy', 'strict-origin-when-cross-origin')
+        response.headers.setdefault('Permissions-Policy', 'camera=(), microphone=(), geolocation=()')
+        response.headers.setdefault(
+            'Content-Security-Policy',
+            "base-uri 'self'; object-src 'none'; frame-ancestors 'none'; form-action 'self'",
+        )
+        response.headers.setdefault('Cross-Origin-Opener-Policy', 'same-origin')
+        response.headers.setdefault('X-Permitted-Cross-Domain-Policies', 'none')
+        if request.endpoint != 'static':
+            response.headers['Cache-Control'] = 'no-store, private'
+        return response
     
     # 添加全局模板变量
     @app.context_processor
     def inject_settings():
         settings = getattr(g, 'settings', None)
         if settings is None:
-            settings = Settings.get_dict()
+            try:
+                settings = Settings.get_dict()
+            except sqlite3.Error:
+                app.logger.warning('模板设置读取失败，使用安全默认值', exc_info=True)
+                settings = {}
         return {
             'platform_name': settings.get('platform_name', '反馈平台'),
             'allow_tourist': settings.get('allow_tourist', 'true'),
             'allow_tourist_comment': settings.get('allow_tourist_comment', 'true'),
             'max_comment_depth': app.config['MAX_COMMENT_DEPTH'],
         }
+
+    @app.route('/healthz')
+    def healthz():
+        try:
+            conn = get_db_connection()
+            try:
+                conn.execute('SELECT 1').fetchone()
+            finally:
+                conn.close()
+        except (sqlite3.Error, OSError):
+            app.logger.warning('健康检查数据库探测失败', exc_info=True)
+            return {'status': 'error'}, 503
+        return {'status': 'ok'}
     
     # 首页 - 显示所有反馈
     @app.route('/')
@@ -149,76 +216,40 @@ def create_app(config_class=Config):
                 include_deleted = False
             
             # 获取待审核帖子数量
-            conn = get_db_connection()
-            pending_count = conn.execute('SELECT COUNT(*) FROM post WHERE is_tourist_post = 1 AND is_approved IS NULL AND is_deleted = 0').fetchone()[0]
-            conn.close()
+            pending_count = fetch_one(
+                'SELECT COUNT(*) FROM post WHERE is_tourist_post = 1 AND is_approved IS NULL AND is_deleted = 0'
+            )[0]
             
         # 如果是管理员并且要查看待审核帖子
         if include_pending and current_user.is_authenticated and (current_user.is_admin or current_user.is_sub_admin):
-            conn = get_db_connection()
-            
             total_query = 'SELECT COUNT(*) FROM post WHERE is_tourist_post = 1 AND is_approved IS NULL AND is_deleted = 0'
-            total = conn.execute(total_query).fetchone()[0]
+            total = fetch_one(total_query)[0]
             page = clamp_page(page, total, app.config['POSTS_PER_PAGE'])
             offset = (page - 1) * app.config['POSTS_PER_PAGE']
             posts_query = 'SELECT * FROM post WHERE is_tourist_post = 1 AND is_approved IS NULL AND is_deleted = 0 ORDER BY created_at DESC LIMIT ? OFFSET ?'
-            
-            posts_data = conn.execute(posts_query, (app.config['POSTS_PER_PAGE'], offset)).fetchall()
-            
-            posts = []
-            for post_data in posts_data:
-                posts.append(Post(
-                    id=post_data['id'],
-                    title=post_data['title'],
-                    content=post_data['content'],
-                    created_at=post_data['created_at'],
-                    user_id=post_data['user_id'],
-                    is_deleted=bool(post_data['is_deleted']) if 'is_deleted' in post_data.keys() else False,
-                    deleted_at=post_data['deleted_at'] if 'deleted_at' in post_data.keys() else None,
-                    deleted_by=post_data['deleted_by'] if 'deleted_by' in post_data.keys() else None,
-                    is_pinned=bool(post_data['is_pinned']) if 'is_pinned' in post_data.keys() else False,
-                    is_tourist_post=bool(post_data['is_tourist_post']) if 'is_tourist_post' in post_data.keys() else False,
-                    is_approved=nullable_bool(post_data['is_approved']) if 'is_approved' in post_data.keys() else None
-                ))
+            posts_data = fetch_all(posts_query, (app.config['POSTS_PER_PAGE'], offset))
+            posts = [Post._from_row(post_data) for post_data in posts_data]
             
             # 创建分页对象
             Post.preload(posts)
             posts = Pagination(page, app.config['POSTS_PER_PAGE'], total, posts)
-            conn.close()
-            
+
             return render_template('index.html', title='待审核反馈', posts=posts, include_deleted=include_deleted, include_pending=include_pending, pending_count=pending_count)
         else:
             if include_deleted and current_user.is_authenticated and (current_user.is_admin or current_user.is_sub_admin):
                 # 显示所有已删除的帖子
-                conn = get_db_connection()
-                total = conn.execute('SELECT COUNT(*) FROM post WHERE is_deleted = 1').fetchone()[0]
+                total = fetch_one('SELECT COUNT(*) FROM post WHERE is_deleted = 1')[0]
                 page = clamp_page(page, total, app.config['POSTS_PER_PAGE'])
                 offset = (page - 1) * app.config['POSTS_PER_PAGE']
-                posts_data = conn.execute(
+                posts_data = fetch_all(
                     'SELECT * FROM post WHERE is_deleted = 1 ORDER BY created_at DESC LIMIT ? OFFSET ?',
-                    (app.config['POSTS_PER_PAGE'], offset)
-                ).fetchall()
-                
-                posts = []
-                for post_data in posts_data:
-                    posts.append(Post(
-                        id=post_data['id'],
-                        title=post_data['title'],
-                        content=post_data['content'],
-                        created_at=post_data['created_at'],
-                        user_id=post_data['user_id'],
-                        is_deleted=bool(post_data['is_deleted']) if 'is_deleted' in post_data.keys() else False,
-                        deleted_at=post_data['deleted_at'] if 'deleted_at' in post_data.keys() else None,
-                        deleted_by=post_data['deleted_by'] if 'deleted_by' in post_data.keys() else None,
-                        is_pinned=bool(post_data['is_pinned']) if 'is_pinned' in post_data.keys() else False,
-                        is_tourist_post=bool(post_data['is_tourist_post']) if 'is_tourist_post' in post_data.keys() else False,
-                        is_approved=nullable_bool(post_data['is_approved']) if 'is_approved' in post_data.keys() else None
-                    ))
+                    (app.config['POSTS_PER_PAGE'], offset),
+                )
+                posts = [Post._from_row(post_data) for post_data in posts_data]
                 
                 Post.preload(posts)
                 posts = Pagination(page, app.config['POSTS_PER_PAGE'], total, posts)
-                conn.close()
-                
+
                 return render_template('index.html', title='已删除反馈', posts=posts, include_deleted=include_deleted, include_pending=include_pending, pending_count=pending_count)
             else:
                 posts = Post.get_all(page=page, per_page=app.config['POSTS_PER_PAGE'], include_deleted=include_deleted)
@@ -244,7 +275,7 @@ def create_app(config_class=Config):
 
         form = LoginForm()
         if form.validate_on_submit():
-            user = User.get_by_username(form.username.data)
+            user = User.get_by_username_ci(form.username.data)
             if user is None or not user.check_password(form.password.data):
                 flash('用户名或密码错误')
                 return redirect(url_for('login'))
@@ -284,6 +315,10 @@ def create_app(config_class=Config):
                 tourist.save()
             except sqlite3.IntegrityError:
                 tourist = User.get_by_username('tourist')
+        if tourist is None:
+            app.logger.error('游客账号缺失且无法自动创建')
+            flash('游客账户当前不可用，请使用注册账号')
+            return redirect(url_for('login'))
         if tourist.is_banned:
             flash('游客账户当前不可用，请注册账号')
             return redirect(url_for('login'))
@@ -321,54 +356,44 @@ def create_app(config_class=Config):
     # 用户个人主页
     @app.route('/user/<username>')
     def user_profile(username):
-        user = User.get_by_username(username)
+        # Usernames are case-insensitively unique, so profile URLs follow the
+        # same rule as login instead of 404-ing on a different letter case.
+        user = User.get_by_username_ci(username)
         if not user:
             abort(404)
         
         # 获取用户所有帖子，管理员可以看到已删除的帖子
-        conn = get_db_connection()
         if current_user.is_authenticated and (current_user.is_admin or current_user.is_sub_admin):
-            user_posts = conn.execute(
+            user_posts = fetch_all(
                 'SELECT * FROM post WHERE user_id = ? ORDER BY is_pinned DESC, created_at DESC',
                 (user.id,)
-            ).fetchall()
+            )
         else:
-            user_posts = conn.execute(
+            user_posts = fetch_all(
                 '''SELECT * FROM post
                    WHERE user_id = ? AND is_deleted = 0
                      AND (is_tourist_post = 0 OR is_approved = 1)
                    ORDER BY is_pinned DESC, created_at DESC''',
                 (user.id,)
-            ).fetchall()
+            )
         
-        result_posts = []
-        for post in user_posts:
-            result_posts.append(Post(
-                id=post['id'],
-                title=post['title'],
-                content=post['content'],
-                created_at=post['created_at'],
-                user_id=post['user_id'],
-                is_deleted=bool(post['is_deleted']) if 'is_deleted' in post.keys() else False,
-                deleted_at=post['deleted_at'] if 'deleted_at' in post.keys() else None,
-                deleted_by=post['deleted_by'] if 'deleted_by' in post.keys() else None,
-                is_pinned=bool(post['is_pinned']) if 'is_pinned' in post.keys() else False
-            ))
+        result_posts = [Post._from_row(post) for post in user_posts]
+        Post.preload(result_posts)
         # 获取用户所有评论，管理员可以看到已删除的评论
         if current_user.is_authenticated and (current_user.is_admin or current_user.is_sub_admin):
-            user_comments = conn.execute(
+            user_comments = fetch_all(
                 'SELECT c.*, p.title as post_title FROM comment c JOIN post p ON c.post_id = p.id WHERE c.user_id = ? ORDER BY c.created_at DESC',
                 (user.id,)
-            ).fetchall()
+            )
         else:
-            user_comments = conn.execute(
+            user_comments = fetch_all(
                 '''SELECT c.*, p.title as post_title FROM comment c
                    JOIN post p ON c.post_id = p.id
                    WHERE c.user_id = ? AND c.is_deleted = 0 AND p.is_deleted = 0
                      AND (p.is_tourist_post = 0 OR p.is_approved = 1)
                    ORDER BY c.created_at DESC''',
                 (user.id,)
-            ).fetchall()
+            )
         
         result_comments = []
         for comment in user_comments:
@@ -386,8 +411,6 @@ def create_app(config_class=Config):
                 id=comment['post_id'], title=comment['post_title']
             )
             result_comments.append(comment_object)
-        
-        conn.close()
         
         return render_template('user_profile.html', user=user, user_posts=result_posts, user_comments=result_comments)
     
@@ -430,7 +453,8 @@ def create_app(config_class=Config):
             current_user.email = form.email.data
             
             # 更新密码
-            if form.password.data:
+            password_changed = bool(form.password.data)
+            if password_changed:
                 current_user.set_password(form.password.data)
             
             try:
@@ -442,7 +466,7 @@ def create_app(config_class=Config):
             # 记录操作日志
             if changed_fields:
                 description = "修改了个人信息: " + ", ".join(changed_fields)
-                ActivityLog.create_log(
+                record_activity(
                     user_id=current_user.id,
                     action='user_edit_profile',
                     target_type='user',
@@ -450,6 +474,11 @@ def create_app(config_class=Config):
                     description=description
                 )
             
+            if password_changed:
+                logout_user()
+                flash('密码已修改，其他已登录会话也已失效，请使用新密码重新登录')
+                return redirect(url_for('login'))
+
             flash('个人信息已更新')
             return redirect(url_for('user_profile', username=current_user.username))
         elif request.method == 'GET':
@@ -483,9 +512,9 @@ def create_app(config_class=Config):
         if not user:
             abort(404)
         
-        # 子管理员不能编辑管理员
-        if current_user.is_sub_admin and user.is_admin:
-            flash('您没有权限编辑管理员账户')
+        # 子管理员只能管理普通用户，不能横向管理其他管理账号
+        if current_user.is_sub_admin and (user.is_admin or user.is_sub_admin):
+            flash('子管理员只能管理普通用户')
             return redirect(url_for('admin_users'))
         
         form = AdminEditProfileForm(user.username, user.email)
@@ -497,6 +526,10 @@ def create_app(config_class=Config):
             if (user.username == 'tourist'
                     and (form.is_admin.data or form.is_sub_admin.data)):
                 flash('游客账号不能被授予管理权限')
+                return redirect(url_for('edit_user', user_id=user.id))
+            if (user.username == 'admin'
+                    and (not form.is_admin.data or form.is_sub_admin.data or form.is_banned.data)):
+                flash('系统管理员账号不能被降权、改为子管理员或封禁')
                 return redirect(url_for('edit_user', user_id=user.id))
             if user.id == current_user.id and form.is_banned.data:
                 flash('您不能封禁自己的账户')
@@ -541,7 +574,8 @@ def create_app(config_class=Config):
             user.banned_reason = form.banned_reason.data if form.is_banned.data else None
             
             # 更新密码
-            if form.password.data:
+            password_changed = bool(form.password.data)
+            if password_changed:
                 user.set_password(form.password.data)
             
             try:
@@ -553,7 +587,7 @@ def create_app(config_class=Config):
             # 记录操作日志
             if changed_fields:
                 description = f"修改了用户 {user.username} 的信息: " + ", ".join(changed_fields)
-                ActivityLog.create_log(
+                record_activity(
                     user_id=current_user.id,
                     action='admin_edit_user',
                     target_type='user',
@@ -561,6 +595,11 @@ def create_app(config_class=Config):
                     description=description
                 )
             
+            if password_changed and user.id == current_user.id:
+                logout_user()
+                flash('密码已修改，请使用新密码重新登录')
+                return redirect(url_for('login'))
+
             flash(f'用户 {user.username} 信息已更新')
             return redirect(url_for('user_profile', username=user.username))
         elif request.method == 'GET':
@@ -585,15 +624,21 @@ def create_app(config_class=Config):
         if not user:
             abort(404)
         
-        # 子管理员不能封禁管理员
-        if current_user.is_sub_admin and user.is_admin:
-            flash('您没有权限封禁管理员账户')
+        # 子管理员只能管理普通用户，不能封禁其他管理账号
+        if current_user.is_sub_admin and (user.is_admin or user.is_sub_admin):
+            flash('子管理员只能管理普通用户')
             return redirect(url_for('admin_users'))
         
+        if user.username == 'admin':
+            flash('系统管理员账号不能被封禁')
+            return redirect(url_for('admin_users'))
         # 不能封禁自己
         if user.id == current_user.id:
             flash('您不能封禁自己的账户')
             return redirect(url_for('admin_users'))
+        if user.is_banned:
+            flash(f'用户 {user.username} 已经处于封禁状态')
+            return redirect(url_for('user_profile', username=user.username))
         
         form = BanUserForm()
         if form.validate_on_submit():
@@ -601,7 +646,7 @@ def create_app(config_class=Config):
             user.ban(reason=reason)
             
             # 记录操作日志
-            ActivityLog.create_log(
+            record_activity(
                 user_id=current_user.id,
                 action='user_ban',
                 target_type='user',
@@ -625,13 +670,16 @@ def create_app(config_class=Config):
         user = User.get_by_id(user_id)
         if not user:
             abort(404)
-        if current_user.is_sub_admin and user.is_admin:
+        if current_user.is_sub_admin and (user.is_admin or user.is_sub_admin):
             abort(403)
+        if not user.is_banned:
+            flash(f'用户 {user.username} 当前未被封禁')
+            return redirect(url_for('user_profile', username=user.username))
         
         user.unban()
         
         # 记录操作日志
-        ActivityLog.create_log(
+        record_activity(
             user_id=current_user.id,
             action='user_unban',
             target_type='user',
@@ -661,10 +709,13 @@ def create_app(config_class=Config):
             abort(404)
 
         if role == 'admin':
+            if user.is_admin:
+                flash(f'用户 {user.username} 已经是管理员')
+                return redirect(url_for('user_profile', username=user.username))
             user.promote_to_admin()
             
             # 记录操作日志
-            ActivityLog.create_log(
+            record_activity(
                 user_id=current_user.id,
                 action='user_promote_admin',
                 target_type='user',
@@ -674,10 +725,16 @@ def create_app(config_class=Config):
             
             flash(f'用户 {user.username} 已被提升为管理员')
         elif role == 'sub_admin':
+            if user.is_admin:
+                flash('管理员不能直接设置为子管理员，请先取消管理员权限')
+                return redirect(url_for('user_profile', username=user.username))
+            if user.is_sub_admin:
+                flash(f'用户 {user.username} 已经是子管理员')
+                return redirect(url_for('user_profile', username=user.username))
             user.promote_to_sub_admin()
             
             # 记录操作日志
-            ActivityLog.create_log(
+            record_activity(
                 user_id=current_user.id,
                 action='user_promote_sub_admin',
                 target_type='user',
@@ -700,6 +757,9 @@ def create_app(config_class=Config):
         user = User.get_by_id(user_id)
         if not user:
             abort(404)
+        if user.username == 'admin':
+            flash('系统管理员账号不能被降权')
+            return redirect(url_for('user_profile', username=user.username))
         if user.id == current_user.id:
             flash('您不能取消自己的管理员权限')
             return redirect(url_for('user_profile', username=user.username))
@@ -708,7 +768,7 @@ def create_app(config_class=Config):
             user.demote_from_admin()
             
             # 记录操作日志
-            ActivityLog.create_log(
+            record_activity(
                 user_id=current_user.id,
                 action='user_demote_admin',
                 target_type='user',
@@ -721,7 +781,7 @@ def create_app(config_class=Config):
             user.demote_from_sub_admin()
             
             # 记录操作日志
-            ActivityLog.create_log(
+            record_activity(
                 user_id=current_user.id,
                 action='user_demote_sub_admin',
                 target_type='user',
@@ -730,6 +790,8 @@ def create_app(config_class=Config):
             )
             
             flash(f'用户 {user.username} 已被取消子管理员权限')
+        else:
+            flash(f'用户 {user.username} 当前没有管理员权限')
         
         return redirect(url_for('user_profile', username=user.username))
     
@@ -759,7 +821,7 @@ def create_app(config_class=Config):
             post.save()
             
             # 记录操作日志
-            ActivityLog.create_log(
+            record_activity(
                 user_id=current_user.id,
                 action='post_create',
                 target_type='post',
@@ -777,6 +839,7 @@ def create_app(config_class=Config):
     
     # 查看反馈
     @app.route('/post/<int:id>', methods=['GET', 'POST'])
+    @login_required
     def post(id):
         post_data = Post.get_by_id(id)
         if not post_data:
@@ -785,8 +848,10 @@ def create_app(config_class=Config):
         is_moderator = current_user.is_admin or current_user.is_sub_admin
         if post_data.is_deleted and not is_moderator and current_user.id != post_data.user_id:
             abort(404)
+        # 待审核/已拒绝的游客反馈仅审核人员和作者本人可见，
+        # 否则作者发布后会立即无法查看自己的内容。
         if (post_data.is_tourist_post and post_data.is_approved is not True
-                and not is_moderator):
+                and not is_moderator and current_user.id != post_data.user_id):
             abort(404)
         
         # 获取所有根评论（非回复的评论）
@@ -848,7 +913,11 @@ def create_app(config_class=Config):
                 post_id=post_data.id,
                 parent_id=parent_id
             )
-            comment.save()
+            try:
+                comment.save()
+            except (ValueError, sqlite3.IntegrityError):
+                flash('评论发布条件已发生变化，请刷新页面后重试', 'error')
+                return redirect(url_for('post', id=id))
             
             # 记录活动日志
             log_description = "发表了评论"
@@ -856,14 +925,13 @@ def create_app(config_class=Config):
                 parent_user = Comment.get_by_id(parent_id).user
                 log_description = f"回复了 {parent_user.username} 的评论"
             
-            activity = ActivityLog(
+            record_activity(
                 user_id=current_user.id,
                 action="create_comment",
                 target_type="comment",
                 target_id=comment.id,
                 description=f"{current_user.username} {log_description}"
             )
-            activity.save()
             
             flash('评论已发布', 'success')
             return redirect(url_for('post', id=id))
@@ -891,10 +959,13 @@ def create_app(config_class=Config):
         if not current_user.is_admin and not current_user.is_sub_admin and current_user.id != post.user_id:
             abort(403)
         
+        if post.is_deleted:
+            flash('该反馈已经被删除')
+            return redirect(url_for('post', id=post_id))
         post.soft_delete(current_user.id)
         
         # 记录操作日志
-        ActivityLog.create_log(
+        record_activity(
             user_id=current_user.id,
             action='post_delete',
             target_type='post',
@@ -917,10 +988,20 @@ def create_app(config_class=Config):
         if not post:
             abort(404)
         
+        if post.is_deleted:
+            flash('已删除的反馈不能置顶，请先恢复')
+            return redirect(url_for('post', id=post_id))
+        if post.is_tourist_post and post.is_approved is not True:
+            flash('待审核或已拒绝的游客反馈不能置顶')
+            return redirect(url_for('post', id=post_id))
+        if post.is_pinned:
+            flash('该反馈已经置顶')
+            return redirect(url_for('post', id=post_id))
+
         post.pin()
         
         # 记录操作日志
-        ActivityLog.create_log(
+        record_activity(
             user_id=current_user.id,
             action='post_pin',
             target_type='post',
@@ -942,11 +1023,14 @@ def create_app(config_class=Config):
         post = Post.get_by_id(post_id)
         if not post:
             abort(404)
+        if not post.is_pinned:
+            flash('该反馈当前未置顶')
+            return redirect(url_for('post', id=post_id))
         
         post.unpin()
         
         # 记录操作日志
-        ActivityLog.create_log(
+        record_activity(
             user_id=current_user.id,
             action='post_unpin',
             target_type='post',
@@ -976,7 +1060,7 @@ def create_app(config_class=Config):
         post.restore()
         
         # 记录操作日志
-        ActivityLog.create_log(
+        record_activity(
             user_id=current_user.id,
             action='post_restore',
             target_type='post',
@@ -1004,11 +1088,14 @@ def create_app(config_class=Config):
         if comment.user_id != current_user.id and not current_user.is_admin and not current_user.is_sub_admin:
             flash('您没有权限删除此评论')
             return redirect(url_for('post', id=comment.post_id))
+        if comment.is_deleted:
+            flash('该评论已经被删除')
+            return redirect(url_for('post', id=comment.post_id))
         
         comment.soft_delete(current_user.id)
         
         # 记录操作日志
-        ActivityLog.create_log(
+        record_activity(
             user_id=current_user.id,
             action='comment_delete',
             target_type='comment',
@@ -1038,7 +1125,7 @@ def create_app(config_class=Config):
         comment.restore()
         
         # 记录操作日志
-        ActivityLog.create_log(
+        record_activity(
             user_id=current_user.id,
             action='comment_restore',
             target_type='comment',
@@ -1076,24 +1163,37 @@ def create_app(config_class=Config):
             flash('帖子不存在', 'error')
             return redirect(url_for('index'))
         
+        if post.is_deleted:
+            flash('已删除帖子的评论不能被采纳', 'error')
+            return redirect(url_for('post', id=post.id))
+        if post.is_tourist_post and post.is_approved is not True:
+            flash('游客反馈通过审核后才能采纳评论', 'error')
+            return redirect(url_for('post', id=post.id))
+        if comment.is_accepted:
+            flash('该评论已经被采纳')
+            return redirect(url_for('post', id=post.id))
+
         can_moderate = current_user.is_admin or current_user.is_sub_admin
         if not can_moderate and current_user.id != post.user_id:
             abort(403)
 
         # 管理员可以采纳自己的评论，普通帖子作者不能采纳自己的评论
         if current_user.id != comment.user_id or can_moderate:
-            # 采纳评论
-            comment.accept(current_user.id)
+            # 采纳评论。模型层再次验证帖子状态，防止审核/删除并发竞态。
+            try:
+                comment.accept(current_user.id)
+            except (ValueError, sqlite3.IntegrityError):
+                flash('当前状态下无法采纳该评论，请刷新后重试', 'error')
+                return redirect(url_for('post', id=post.id))
             
             # 记录活动日志
-            activity = ActivityLog(
+            record_activity(
                 user_id=current_user.id,
                 action="accept_comment",
                 target_type="comment",
                 target_id=comment.id,
                 description=f"{current_user.username} 采纳了 {comment.user.username} 的评论"
             )
-            activity.save()
             
             flash('已采纳评论', 'success')
         else:
@@ -1140,7 +1240,7 @@ def create_app(config_class=Config):
         comment.cancel_accept()
         
         # 记录操作日志
-        ActivityLog.create_log(
+        record_activity(
             user_id=current_user.id,
             action='comment_cancel_accept',
             target_type='comment',
@@ -1169,11 +1269,14 @@ def create_app(config_class=Config):
         if post.is_deleted:
             flash('已删除的帖子不能通过审核，请先恢复')
             return redirect(url_for('admin_pending_posts', show_deleted=1))
+        if post.is_approved is True:
+            flash('该帖子已经审核通过')
+            return redirect(url_for('post', id=post_id))
         
         post.approve()
         
         # 记录操作日志
-        ActivityLog.create_log(
+        record_activity(
             user_id=current_user.id,
             action='post_approve',
             target_type='post',
@@ -1202,11 +1305,14 @@ def create_app(config_class=Config):
         if post.is_deleted:
             flash('已删除的帖子不能执行审核操作')
             return redirect(url_for('admin_pending_posts', show_deleted=1))
+        if post.is_approved is False:
+            flash('该帖子已经被拒绝')
+            return redirect(url_for('post', id=post_id))
         
         post.reject()
         
         # 记录操作日志
-        ActivityLog.create_log(
+        record_activity(
             user_id=current_user.id,
             action='post_reject',
             target_type='post',
@@ -1232,69 +1338,50 @@ def create_app(config_class=Config):
             abort(400)
         show_deleted = view == 'deleted'
         
-        conn = get_db_connection()
-        
         if view == 'deleted':
             # 获取已删除的帖子总数
-            total = conn.execute('SELECT COUNT(*) FROM post WHERE is_deleted = 1').fetchone()[0]
+            total = fetch_one('SELECT COUNT(*) FROM post WHERE is_deleted = 1')[0]
             page = clamp_page(page, total, app.config['POSTS_PER_PAGE'])
             # 获取分页数据
             offset = (page - 1) * app.config['POSTS_PER_PAGE']
-            posts_data = conn.execute(
+            posts_data = fetch_all(
                 'SELECT * FROM post WHERE is_deleted = 1 ORDER BY created_at DESC LIMIT ? OFFSET ?',
                 (app.config['POSTS_PER_PAGE'], offset)
-            ).fetchall()
+            )
             
             title = '已删除反馈'
         elif view == 'rejected':
-            total = conn.execute(
+            total = fetch_one(
                 'SELECT COUNT(*) FROM post WHERE is_tourist_post = 1 AND is_approved = 0 AND is_deleted = 0'
-            ).fetchone()[0]
+            )[0]
             page = clamp_page(page, total, app.config['POSTS_PER_PAGE'])
             offset = (page - 1) * app.config['POSTS_PER_PAGE']
-            posts_data = conn.execute(
+            posts_data = fetch_all(
                 '''SELECT * FROM post
                    WHERE is_tourist_post = 1 AND is_approved = 0 AND is_deleted = 0
                    ORDER BY created_at DESC LIMIT ? OFFSET ?''',
                 (app.config['POSTS_PER_PAGE'], offset)
-            ).fetchall()
+            )
             title = '已拒绝反馈'
         else:
             # 获取待审核帖子总数
-            total = conn.execute('SELECT COUNT(*) FROM post WHERE is_tourist_post = 1 AND is_approved IS NULL AND is_deleted = 0').fetchone()[0]
+            total = fetch_one('SELECT COUNT(*) FROM post WHERE is_tourist_post = 1 AND is_approved IS NULL AND is_deleted = 0')[0]
             page = clamp_page(page, total, app.config['POSTS_PER_PAGE'])
             # 获取分页数据
             offset = (page - 1) * app.config['POSTS_PER_PAGE']
-            posts_data = conn.execute(
+            posts_data = fetch_all(
                 'SELECT * FROM post WHERE is_tourist_post = 1 AND is_approved IS NULL AND is_deleted = 0 ORDER BY created_at DESC LIMIT ? OFFSET ?',
                 (app.config['POSTS_PER_PAGE'], offset)
-            ).fetchall()
+            )
             
             title = '待审核反馈'
         
         # 处理帖子数据
-        posts = []
-        for post_data in posts_data:
-            post = Post(
-                id=post_data['id'],
-                title=post_data['title'],
-                content=post_data['content'],
-                created_at=post_data['created_at'],
-                user_id=post_data['user_id'],
-                is_deleted=bool(post_data['is_deleted']) if 'is_deleted' in post_data.keys() else False,
-                deleted_at=post_data['deleted_at'] if 'deleted_at' in post_data.keys() else None,
-                deleted_by=post_data['deleted_by'] if 'deleted_by' in post_data.keys() else None,
-                is_pinned=bool(post_data['is_pinned']) if 'is_pinned' in post_data.keys() else False,
-                is_tourist_post=bool(post_data['is_tourist_post']) if 'is_tourist_post' in post_data.keys() else False,
-                is_approved=nullable_bool(post_data['is_approved']) if 'is_approved' in post_data.keys() else None
-            )
-            posts.append(post)
+        posts = [Post._from_row(post_data) for post_data in posts_data]
         
         # 创建分页对象
         Post.preload(posts)
         posts = Pagination(page, app.config['POSTS_PER_PAGE'], total, posts)
-        conn.close()
-        
         return render_template(
             'admin/pending_posts.html', title=title, posts=posts,
             show_deleted=show_deleted, view=view
@@ -1308,17 +1395,7 @@ def create_app(config_class=Config):
             flash('您没有访问管理员面板的权限')
             return redirect(url_for('index'))
         
-        conn = get_db_connection()
-        
-        # 用户统计
-        user_count = conn.execute('SELECT COUNT(*) FROM user').fetchone()[0]
-        admin_count = conn.execute('SELECT COUNT(*) FROM user WHERE is_admin = 1').fetchone()[0]
-        sub_admin_count = conn.execute('SELECT COUNT(*) FROM user WHERE is_sub_admin = 1').fetchone()[0]
-        regular_user_count = conn.execute(
-            'SELECT COUNT(*) FROM user WHERE is_admin = 0 AND is_sub_admin = 0'
-        ).fetchone()[0]
-        
-        # 按平台时区统计当天新增数据
+        # 按平台时区统计当天新增数据。
         timezone_name = g.settings.get('timezone', 'Asia/Shanghai')
         try:
             target_timezone = pytz.timezone(timezone_name)
@@ -1332,34 +1409,51 @@ def create_app(config_class=Config):
         end_utc = target_timezone.localize(
             datetime.combine(next_date, datetime.min.time())
         ).astimezone(dt_timezone.utc).strftime('%Y-%m-%d %H:%M:%S')
-        today_new_users = conn.execute(
-            'SELECT COUNT(*) FROM user WHERE created_at >= ? AND created_at < ?',
-            (start_utc, end_utc)
-        ).fetchone()[0]
-        
-        # 帖子统计
-        post_count = conn.execute('SELECT COUNT(*) FROM post').fetchone()[0]
-        pending_count = conn.execute('SELECT COUNT(*) FROM post WHERE is_tourist_post = 1 AND is_approved IS NULL AND is_deleted = 0').fetchone()[0]
-        deleted_count = conn.execute('SELECT COUNT(*) FROM post WHERE is_deleted = 1').fetchone()[0]
-        pinned_count = conn.execute('SELECT COUNT(*) FROM post WHERE is_pinned = 1').fetchone()[0]
-        
-        # 新增帖子
-        today_new_posts = conn.execute(
-            'SELECT COUNT(*) FROM post WHERE created_at >= ? AND created_at < ?',
-            (start_utc, end_utc)
-        ).fetchone()[0]
-        
-        # 计算百分比
+
+        # 仪表盘统计在一个连接中完成，并确保异常分支也会释放连接。
+        conn = get_db_connection()
+        try:
+            user_stats = conn.execute(
+                """SELECT
+                       COUNT(*) AS user_count,
+                       SUM(CASE WHEN is_admin = 1 THEN 1 ELSE 0 END) AS admin_count,
+                       SUM(CASE WHEN is_sub_admin = 1 THEN 1 ELSE 0 END) AS sub_admin_count,
+                       SUM(CASE WHEN is_admin = 0 AND is_sub_admin = 0 THEN 1 ELSE 0 END) AS regular_user_count,
+                       SUM(CASE WHEN created_at >= ? AND created_at < ? THEN 1 ELSE 0 END) AS today_new_users
+                   FROM user""",
+                (start_utc, end_utc)
+            ).fetchone()
+            post_stats = conn.execute(
+                """SELECT
+                       COUNT(*) AS post_count,
+                       SUM(CASE WHEN is_tourist_post = 1 AND is_approved IS NULL AND is_deleted = 0 THEN 1 ELSE 0 END) AS pending_count,
+                       SUM(CASE WHEN is_deleted = 1 THEN 1 ELSE 0 END) AS deleted_count,
+                       SUM(CASE WHEN is_pinned = 1 THEN 1 ELSE 0 END) AS pinned_count,
+                       SUM(CASE WHEN created_at >= ? AND created_at < ? THEN 1 ELSE 0 END) AS today_new_posts
+                   FROM post""",
+                (start_utc, end_utc)
+            ).fetchone()
+        finally:
+            conn.close()
+
+        user_count = user_stats['user_count'] or 0
+        admin_count = user_stats['admin_count'] or 0
+        sub_admin_count = user_stats['sub_admin_count'] or 0
+        regular_user_count = user_stats['regular_user_count'] or 0
+        today_new_users = user_stats['today_new_users'] or 0
+        post_count = post_stats['post_count'] or 0
+        pending_count = post_stats['pending_count'] or 0
+        deleted_count = post_stats['deleted_count'] or 0
+        pinned_count = post_stats['pinned_count'] or 0
+        today_new_posts = post_stats['today_new_posts'] or 0
         pending_percent = round((pending_count / post_count) * 100) if post_count > 0 else 0
-        
+
         # 获取活动日志
         recent_activities = ActivityLog.get_recent_logs(10)
-        
+
         platform_name = g.settings.get('platform_name', '反馈平台')
         allow_tourist = g.settings.get('allow_tourist', 'true')
         allow_tourist_comment = g.settings.get('allow_tourist_comment', 'true')
-        
-        conn.close()
         
         return render_template('admin/dashboard.html', 
                               title='管理员面板', 
@@ -1407,7 +1501,7 @@ def create_app(config_class=Config):
             })
 
             # 记录活动
-            ActivityLog.create_log(
+            record_activity(
                 user_id=current_user.id,
                 action='update',
                 target_type='settings',
@@ -1450,15 +1544,6 @@ def create_app(config_class=Config):
             timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
             filename = f'feedback_backup_{timestamp}.db'
 
-            # 记录操作日志
-            ActivityLog.create_log(
-                user_id=current_user.id,
-                action='database_export',
-                target_type='system',
-                target_id=0,
-                description=f'管理员 {current_user.username} 导出了数据库'
-            )
-
             backup = tempfile.NamedTemporaryFile(suffix='.db', delete=False)
             backup_path = backup.name
             backup.close()
@@ -1472,6 +1557,14 @@ def create_app(config_class=Config):
 
             response = send_file(
                 backup_path, as_attachment=True, download_name=filename
+            )
+
+            record_activity(
+                user_id=current_user.id,
+                action='database_export',
+                target_type='system',
+                target_id=0,
+                description=f'管理员 {current_user.username} 导出了数据库'
             )
 
             @response.call_on_close
@@ -1505,6 +1598,10 @@ def create_app(config_class=Config):
     @app.errorhandler(404)
     def not_found_error(error):
         return render_template('404.html'), 404
+
+    @app.errorhandler(413)
+    def request_too_large_error(error):
+        return render_template('413.html'), 413
 
     @app.errorhandler(500)
     def internal_error(error):

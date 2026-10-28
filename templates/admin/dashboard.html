@@ -210,11 +210,13 @@
                     </div>
                 </div>
                 
+                {% if current_user.is_admin %}
                 <div class="mt-auto pt-6">
                     <a href="{{ url_for('admin_settings') }}" class="block w-full text-white py-2 px-4 rounded text-center transition duration-200 hover:opacity-90" style="background-color: #4589EB;">
                         系统设置
                     </a>
                 </div>
+                {% endif %}
             </div>
         </div>
     </div>

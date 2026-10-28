@@ -13,4 +13,14 @@ venv/
 Dockerfile
 docker-compose.yml
 .dockerignore
-README.md 
+README.md
+*_debug.txt
+.secret_key
+feedback.db
+feedback.db-shm
+feedback.db-wal
+*.db
+.agents/
+tests/
+*.bak*
+AUDIT_REPORT.md

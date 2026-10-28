@@ -1,6 +1,8 @@
 #!/bin/sh
 set -e
 
+umask 077
+
 # 等待一些基础服务启动（如果有的话）
 # sleep 5
 
@@ -14,6 +16,25 @@ fi
 WORKERS=${WORKERS:-2}
 THREADS=${THREADS:-2}
 LOG_LEVEL=${LOG_LEVEL:-info}
+
+case "$WORKERS" in
+  ''|*[!0-9]*) echo "WORKERS must be a positive integer" >&2; exit 2 ;;
+esac
+case "$THREADS" in
+  ''|*[!0-9]*) echo "THREADS must be a positive integer" >&2; exit 2 ;;
+esac
+if [ "$WORKERS" -lt 1 ] || [ "$WORKERS" -gt 32 ]; then
+  echo "WORKERS must be between 1 and 32" >&2
+  exit 2
+fi
+if [ "$THREADS" -lt 1 ] || [ "$THREADS" -gt 64 ]; then
+  echo "THREADS must be between 1 and 64" >&2
+  exit 2
+fi
+case "$LOG_LEVEL" in
+  debug|info|warning|error|critical) ;;
+  *) echo "Invalid LOG_LEVEL" >&2; exit 2 ;;
+esac
 
 # 未显式配置时，在持久化数据卷中生成稳定的会话密钥。
 if [ -z "$SECRET_KEY" ] || [ "$SECRET_KEY" = "your-secure-secret-key" ]; then
@@ -41,9 +62,9 @@ else
   # 启动生产模式（使用gunicorn）
   echo "Running in production mode"
   exec gunicorn --bind 0.0.0.0:5000 \
-    --workers $WORKERS \
-    --threads $THREADS \
-    --log-level $LOG_LEVEL \
+    --workers "$WORKERS" \
+    --threads "$THREADS" \
+    --log-level "$LOG_LEVEL" \
     --access-logfile - \
     --error-logfile - \
     "app:create_app()"
