@@ -10,11 +10,35 @@ db_dir = os.environ.get('DB_DIR', os.path.dirname(os.path.abspath(__file__)))
 DB_PATH = os.path.join(db_dir, 'feedback.db')
 
 def get_db_connection():
-    os.makedirs(db_dir, exist_ok=True)
+    os.makedirs(db_dir, mode=0o700, exist_ok=True)
     conn = sqlite3.connect(DB_PATH, timeout=30)
     conn.row_factory = sqlite3.Row
     conn.execute('PRAGMA foreign_keys = ON')
+    conn.execute('PRAGMA busy_timeout = 30000')
+    if os.name == 'posix':
+        try:
+            os.chmod(DB_PATH, 0o600)
+        except OSError:
+            pass
     return conn
+
+def fetch_one(query, params=()):
+    """Execute one read and always release the SQLite connection."""
+    conn = get_db_connection()
+    try:
+        return conn.execute(query, params).fetchone()
+    finally:
+        conn.close()
+
+
+def fetch_all(query, params=()):
+    """Execute a read and always release the SQLite connection."""
+    conn = get_db_connection()
+    try:
+        return conn.execute(query, params).fetchall()
+    finally:
+        conn.close()
+
 
 def init_db():
     """初始化并以非破坏方式升级数据库结构。"""
@@ -30,6 +54,7 @@ def init_db():
             username TEXT UNIQUE NOT NULL,
             password TEXT,
             email TEXT UNIQUE,
+            auth_version INTEGER NOT NULL DEFAULT 0,
             is_admin BOOLEAN NOT NULL DEFAULT 0,
             is_sub_admin BOOLEAN NOT NULL DEFAULT 0,
             is_banned BOOLEAN NOT NULL DEFAULT 0,
@@ -105,6 +130,11 @@ def init_db():
 
         migrations = {
             'user': {
+                'password': 'TEXT',
+                'email': 'TEXT',
+                'is_admin': 'BOOLEAN NOT NULL DEFAULT 0',
+                'created_at': 'TIMESTAMP',
+                'auth_version': 'INTEGER NOT NULL DEFAULT 0',
                 'is_sub_admin': 'BOOLEAN NOT NULL DEFAULT 0',
                 'is_banned': 'BOOLEAN NOT NULL DEFAULT 0',
                 'banned_reason': 'TEXT',
@@ -113,6 +143,10 @@ def init_db():
                 'comments': 'INTEGER NOT NULL DEFAULT 0',
             },
             'post': {
+                'title': "TEXT NOT NULL DEFAULT ''",
+                'content': "TEXT NOT NULL DEFAULT ''",
+                'user_id': 'INTEGER',
+                'created_at': 'TIMESTAMP',
                 'is_deleted': 'BOOLEAN NOT NULL DEFAULT 0',
                 'deleted_by': 'INTEGER',
                 'deleted_at': 'TIMESTAMP',
@@ -121,12 +155,29 @@ def init_db():
                 'is_approved': 'BOOLEAN',
             },
             'comment': {
+                'content': "TEXT NOT NULL DEFAULT ''",
+                'user_id': 'INTEGER',
+                'post_id': 'INTEGER',
+                'created_at': 'TIMESTAMP',
                 'is_deleted': 'BOOLEAN NOT NULL DEFAULT 0',
                 'deleted_at': 'TIMESTAMP',
                 'deleted_by': 'INTEGER',
                 'parent_id': 'INTEGER',
                 'is_accepted': 'BOOLEAN NOT NULL DEFAULT 0',
                 'accepted_by': 'INTEGER',
+            },
+            'activity_log': {
+                'user_id': 'INTEGER',
+                'action': "TEXT NOT NULL DEFAULT ''",
+                'target_type': "TEXT NOT NULL DEFAULT ''",
+                'target_id': 'INTEGER',
+                'description': "TEXT NOT NULL DEFAULT ''",
+                'created_at': 'TIMESTAMP',
+            },
+            'settings': {
+                'value': 'TEXT',
+                'description': 'TEXT',
+                'updated_at': 'TIMESTAMP',
             },
         }
         for table, additions in migrations.items():
@@ -138,25 +189,64 @@ def init_db():
                 if name not in columns:
                     cursor.execute(f'ALTER TABLE {table} ADD COLUMN {name} {definition}')
 
+        # ALTER TABLE cannot add a non-constant CURRENT_TIMESTAMP default, so
+        # backfill timestamps for rows that predate the column.
+        for table, column in (
+            ('user', 'created_at'),
+            ('post', 'created_at'),
+            ('comment', 'created_at'),
+            ('activity_log', 'created_at'),
+            ('settings', 'updated_at'),
+        ):
+            cursor.execute(
+                f'UPDATE {table} SET {column} = CURRENT_TIMESTAMP WHERE {column} IS NULL'
+            )
+
+        # Older schemas allowed empty-string e-mails. Normalize them to NULL so
+        # the case-insensitive unique index applies only to real addresses.
+        cursor.execute("UPDATE user SET email = NULL WHERE email IS NOT NULL AND TRIM(email) = ''")
+
         cursor.execute('''UPDATE user SET
+                              auth_version = COALESCE(auth_version, 0),
                               is_admin = COALESCE(is_admin, 0),
                               is_sub_admin = CASE WHEN is_admin = 1 THEN 0 ELSE COALESCE(is_sub_admin, 0) END,
                               is_banned = COALESCE(is_banned, 0),
                               posts = COALESCE(posts, 0),
                               comments = COALESCE(comments, 0)
-                          WHERE is_admin IS NULL OR is_sub_admin IS NULL
+                          WHERE auth_version IS NULL OR is_admin IS NULL OR is_sub_admin IS NULL
                              OR is_banned IS NULL OR posts IS NULL OR comments IS NULL
                              OR (is_admin = 1 AND is_sub_admin = 1)''')
         cursor.execute('''UPDATE post SET
                               is_deleted = COALESCE(is_deleted, 0),
-                              is_pinned = COALESCE(is_pinned, 0),
+                              is_pinned = CASE
+                                  WHEN COALESCE(is_deleted, 0) = 1 THEN 0
+                                  WHEN COALESCE(is_tourist_post, 0) = 1 AND is_approved IS NOT 1 THEN 0
+                                  ELSE COALESCE(is_pinned, 0)
+                              END,
                               is_tourist_post = COALESCE(is_tourist_post, 0)
                           WHERE is_deleted IS NULL OR is_pinned IS NULL
-                             OR is_tourist_post IS NULL''')
+                             OR is_tourist_post IS NULL OR (is_deleted = 1 AND is_pinned = 1)
+                             OR (is_tourist_post = 1 AND is_approved IS NOT 1 AND is_pinned = 1)''')
         cursor.execute('''UPDATE comment SET
                               is_deleted = COALESCE(is_deleted, 0),
                               is_accepted = COALESCE(is_accepted, 0)
                           WHERE is_deleted IS NULL OR is_accepted IS NULL''')
+
+        # 数据库层阻止并发请求创建仅大小写不同的重复账号/邮箱。
+        username_conflict = cursor.execute(
+            '''SELECT username FROM user GROUP BY username COLLATE NOCASE
+               HAVING COUNT(*) > 1 LIMIT 1'''
+        ).fetchone()
+        if username_conflict:
+            raise RuntimeError('数据库存在仅大小写不同的重复用户名，请先合并或改名后再升级。')
+        email_conflict = cursor.execute(
+            '''SELECT email FROM user WHERE email IS NOT NULL AND TRIM(email) <> ''
+               GROUP BY email COLLATE NOCASE HAVING COUNT(*) > 1 LIMIT 1'''
+        ).fetchone()
+        if email_conflict:
+            raise RuntimeError('数据库存在仅大小写不同的重复邮箱，请先处理后再升级。')
+        cursor.execute('CREATE UNIQUE INDEX IF NOT EXISTS ux_user_username_nocase ON user (username COLLATE NOCASE)')
+        cursor.execute('CREATE UNIQUE INDEX IF NOT EXISTS ux_user_email_nocase ON user (email COLLATE NOCASE) WHERE email IS NOT NULL')
 
         indexes = (
             ('idx_post_user_id', 'post', 'user_id'),
@@ -170,17 +260,229 @@ def init_db():
         for name, table, columns in indexes:
             cursor.execute(f'CREATE INDEX IF NOT EXISTS {name} ON {table} ({columns})')
 
+        for reserved_name in ('admin', 'tourist'):
+            conflict = cursor.execute(
+                'SELECT username FROM user WHERE username = ? COLLATE NOCASE AND username <> ? LIMIT 1',
+                (reserved_name, reserved_name),
+            ).fetchone()
+            if conflict:
+                raise RuntimeError(f'数据库存在与系统保留账号 {reserved_name} 仅大小写不同的用户名，请先改名后再升级。')
+
+        # Normalize legacy references that ALTER TABLE cannot retrofit with FOREIGN KEY clauses.
+        cursor.execute('''UPDATE post SET deleted_by = NULL
+                          WHERE deleted_by IS NOT NULL
+                            AND NOT EXISTS (SELECT 1 FROM user WHERE id = post.deleted_by)''')
+        cursor.execute('''UPDATE comment SET deleted_by = NULL
+                          WHERE deleted_by IS NOT NULL
+                            AND NOT EXISTS (SELECT 1 FROM user WHERE id = comment.deleted_by)''')
+        cursor.execute('''UPDATE comment SET parent_id = NULL
+                          WHERE parent_id IS NOT NULL AND (
+                              parent_id = id
+                              OR NOT EXISTS (SELECT 1 FROM comment p WHERE p.id = comment.parent_id)
+                              OR EXISTS (SELECT 1 FROM comment p
+                                         WHERE p.id = comment.parent_id AND p.post_id != comment.post_id)
+                          )''')
+
+        orphan_post = cursor.execute(
+            '''SELECT p.id FROM post p LEFT JOIN user u ON u.id = p.user_id
+               WHERE u.id IS NULL LIMIT 1'''
+        ).fetchone()
+        orphan_comment = cursor.execute(
+            '''SELECT c.id FROM comment c
+               LEFT JOIN user u ON u.id = c.user_id
+               LEFT JOIN post p ON p.id = c.post_id
+               WHERE u.id IS NULL OR p.id IS NULL LIMIT 1'''
+        ).fetchone()
+        if orphan_post or orphan_comment:
+            raise RuntimeError('数据库存在缺失作者或所属反馈的孤立内容，请先修复数据引用后再启动。')
+
+        # 清理历史异常采纳状态，并用部分唯一索引保证每帖最多一个有效采纳评论。
+        cursor.execute('''UPDATE comment SET is_accepted = 0, accepted_by = NULL
+                          WHERE is_accepted = 1 AND (
+                              is_deleted = 1
+                              OR accepted_by IS NULL
+                              OR NOT EXISTS (SELECT 1 FROM user WHERE id = comment.accepted_by)
+                              OR NOT EXISTS (SELECT 1 FROM post p WHERE p.id = comment.post_id
+                                             AND p.is_deleted = 0
+                                             AND (p.is_tourist_post = 0 OR p.is_approved = 1))
+                          )''')
+        cursor.execute(
+            'UPDATE comment SET accepted_by = NULL WHERE is_accepted = 0 AND accepted_by IS NOT NULL'
+        )
+        cursor.execute('''UPDATE comment SET is_accepted = 0, accepted_by = NULL
+                          WHERE is_deleted = 0 AND is_accepted = 1
+                            AND id NOT IN (SELECT MIN(id) FROM comment
+                                           WHERE is_deleted = 0 AND is_accepted = 1
+                                           GROUP BY post_id)''')
+        cursor.execute('''CREATE UNIQUE INDEX IF NOT EXISTS idx_comment_one_accepted_per_post
+                          ON comment (post_id) WHERE is_accepted = 1 AND is_deleted = 0''')
+
+        # Legacy tables created by very old versions cannot gain FOREIGN KEY
+        # clauses via ALTER TABLE. Triggers provide equivalent guards for all
+        # new writes and also enforce cross-row business invariants.
+        trigger_names = (
+            'trg_user_insert_invariants',
+            'trg_user_update_invariants',
+            'trg_post_insert_refs',
+            'trg_post_update_refs',
+            'trg_post_hide_clears_acceptance',
+            'trg_comment_insert_refs',
+            'trg_comment_update_refs',
+            'trg_activity_insert_user',
+        )
+        for trigger_name in trigger_names:
+            cursor.execute(f'DROP TRIGGER IF EXISTS {trigger_name}')
+
+        trigger_statements = (
+            '''CREATE TRIGGER IF NOT EXISTS trg_user_insert_invariants
+            BEFORE INSERT ON user
+            BEGIN
+                SELECT CASE WHEN NEW.is_admin = 1 AND NEW.is_sub_admin = 1
+                    THEN RAISE(ABORT, 'user cannot hold both admin roles') END;
+                SELECT CASE WHEN NEW.username = 'tourist' COLLATE NOCASE
+                                  AND (NEW.is_admin = 1 OR NEW.is_sub_admin = 1)
+                    THEN RAISE(ABORT, 'tourist cannot hold admin roles') END;
+                SELECT CASE WHEN NEW.username = 'admin' COLLATE NOCASE
+                                  AND (NEW.is_admin != 1 OR NEW.is_sub_admin != 0 OR NEW.is_banned != 0)
+                    THEN RAISE(ABORT, 'system admin invariants violated') END;
+            END;''',
+            '''CREATE TRIGGER IF NOT EXISTS trg_user_update_invariants
+            BEFORE UPDATE OF username, is_admin, is_sub_admin, is_banned ON user
+            BEGIN
+                SELECT CASE WHEN OLD.username IN ('admin', 'tourist') AND NEW.username != OLD.username
+                    THEN RAISE(ABORT, 'system account username cannot change') END;
+                SELECT CASE WHEN NEW.is_admin = 1 AND NEW.is_sub_admin = 1
+                    THEN RAISE(ABORT, 'user cannot hold both admin roles') END;
+                SELECT CASE WHEN NEW.username = 'tourist' COLLATE NOCASE
+                                  AND (NEW.is_admin = 1 OR NEW.is_sub_admin = 1)
+                    THEN RAISE(ABORT, 'tourist cannot hold admin roles') END;
+                SELECT CASE WHEN NEW.username = 'admin' COLLATE NOCASE
+                                  AND (NEW.is_admin != 1 OR NEW.is_sub_admin != 0 OR NEW.is_banned != 0)
+                    THEN RAISE(ABORT, 'system admin invariants violated') END;
+            END;''',
+            '''CREATE TRIGGER IF NOT EXISTS trg_post_insert_refs
+            BEFORE INSERT ON post
+            BEGIN
+                SELECT CASE WHEN NOT EXISTS (SELECT 1 FROM user WHERE id = NEW.user_id)
+                    THEN RAISE(ABORT, 'post user does not exist') END;
+                SELECT CASE WHEN NEW.deleted_by IS NOT NULL
+                                  AND NOT EXISTS (SELECT 1 FROM user WHERE id = NEW.deleted_by)
+                    THEN RAISE(ABORT, 'post deleter does not exist') END;
+                SELECT CASE WHEN NEW.is_pinned = 1
+                                  AND (NEW.is_deleted = 1 OR (NEW.is_tourist_post = 1 AND NEW.is_approved IS NOT 1))
+                    THEN RAISE(ABORT, 'post cannot be pinned in current state') END;
+            END;''',
+            '''CREATE TRIGGER IF NOT EXISTS trg_post_update_refs
+            BEFORE UPDATE OF user_id, deleted_by, is_pinned, is_deleted, is_tourist_post, is_approved ON post
+            BEGIN
+                SELECT CASE WHEN NOT EXISTS (SELECT 1 FROM user WHERE id = NEW.user_id)
+                    THEN RAISE(ABORT, 'post user does not exist') END;
+                SELECT CASE WHEN NEW.deleted_by IS NOT NULL
+                                  AND NOT EXISTS (SELECT 1 FROM user WHERE id = NEW.deleted_by)
+                    THEN RAISE(ABORT, 'post deleter does not exist') END;
+                SELECT CASE WHEN NEW.is_pinned = 1
+                                  AND (NEW.is_deleted = 1 OR (NEW.is_tourist_post = 1 AND NEW.is_approved IS NOT 1))
+                    THEN RAISE(ABORT, 'post cannot be pinned in current state') END;
+            END;''',
+            '''CREATE TRIGGER IF NOT EXISTS trg_post_hide_clears_acceptance
+            AFTER UPDATE OF is_deleted, is_tourist_post, is_approved ON post
+            WHEN NEW.is_deleted = 1
+                 OR (NEW.is_tourist_post = 1 AND NEW.is_approved IS NOT 1)
+            BEGIN
+                UPDATE comment
+                SET is_accepted = 0, accepted_by = NULL
+                WHERE post_id = NEW.id AND is_accepted = 1;
+            END;''',
+            '''CREATE TRIGGER IF NOT EXISTS trg_comment_insert_refs
+            BEFORE INSERT ON comment
+            BEGIN
+                SELECT CASE WHEN NOT EXISTS (SELECT 1 FROM user WHERE id = NEW.user_id)
+                    THEN RAISE(ABORT, 'comment user does not exist') END;
+                SELECT CASE WHEN NOT EXISTS (SELECT 1 FROM post WHERE id = NEW.post_id)
+                    THEN RAISE(ABORT, 'comment post does not exist') END;
+                SELECT CASE WHEN NEW.parent_id IS NOT NULL AND NOT EXISTS (
+                    SELECT 1 FROM comment p
+                    WHERE p.id = NEW.parent_id AND p.post_id = NEW.post_id AND p.is_deleted = 0
+                ) THEN RAISE(ABORT, 'invalid comment parent') END;
+                SELECT CASE WHEN NEW.deleted_by IS NOT NULL
+                                  AND NOT EXISTS (SELECT 1 FROM user WHERE id = NEW.deleted_by)
+                    THEN RAISE(ABORT, 'comment deleter does not exist') END;
+                SELECT CASE WHEN NEW.is_accepted = 0 AND NEW.accepted_by IS NOT NULL
+                    THEN RAISE(ABORT, 'unaccepted comment cannot have accepted_by') END;
+                SELECT CASE WHEN NEW.is_accepted = 1 AND (
+                    NEW.is_deleted = 1 OR NEW.accepted_by IS NULL
+                    OR NOT EXISTS (SELECT 1 FROM user WHERE id = NEW.accepted_by)
+                    OR NOT EXISTS (
+                        SELECT 1 FROM post p WHERE p.id = NEW.post_id AND p.is_deleted = 0
+                          AND (p.is_tourist_post = 0 OR p.is_approved = 1)
+                    )
+                ) THEN RAISE(ABORT, 'comment cannot be accepted in current state') END;
+            END;''',
+            '''CREATE TRIGGER IF NOT EXISTS trg_comment_update_refs
+            BEFORE UPDATE OF user_id, post_id, parent_id, is_deleted, deleted_by, is_accepted, accepted_by ON comment
+            BEGIN
+                SELECT CASE WHEN NOT EXISTS (SELECT 1 FROM user WHERE id = NEW.user_id)
+                    THEN RAISE(ABORT, 'comment user does not exist') END;
+                SELECT CASE WHEN NOT EXISTS (SELECT 1 FROM post WHERE id = NEW.post_id)
+                    THEN RAISE(ABORT, 'comment post does not exist') END;
+                SELECT CASE WHEN (NEW.parent_id IS NOT OLD.parent_id OR NEW.post_id != OLD.post_id)
+                                  AND NEW.parent_id = NEW.id
+                    THEN RAISE(ABORT, 'comment cannot parent itself') END;
+                SELECT CASE WHEN NEW.parent_id IS NOT NULL
+                                  AND (NEW.parent_id IS NOT OLD.parent_id OR NEW.post_id != OLD.post_id)
+                                  AND NOT EXISTS (
+                    SELECT 1 FROM comment p
+                    WHERE p.id = NEW.parent_id AND p.post_id = NEW.post_id AND p.is_deleted = 0
+                ) THEN RAISE(ABORT, 'invalid comment parent') END;
+                SELECT CASE WHEN NEW.deleted_by IS NOT NULL
+                                  AND NOT EXISTS (SELECT 1 FROM user WHERE id = NEW.deleted_by)
+                    THEN RAISE(ABORT, 'comment deleter does not exist') END;
+                SELECT CASE WHEN NEW.is_accepted = 0 AND NEW.accepted_by IS NOT NULL
+                    THEN RAISE(ABORT, 'unaccepted comment cannot have accepted_by') END;
+                SELECT CASE WHEN NEW.is_accepted = 1 AND (
+                    NEW.is_deleted = 1 OR NEW.accepted_by IS NULL
+                    OR NOT EXISTS (SELECT 1 FROM user WHERE id = NEW.accepted_by)
+                    OR NOT EXISTS (
+                        SELECT 1 FROM post p WHERE p.id = NEW.post_id AND p.is_deleted = 0
+                          AND (p.is_tourist_post = 0 OR p.is_approved = 1)
+                    )
+                ) THEN RAISE(ABORT, 'comment cannot be accepted in current state') END;
+            END;''',
+            '''CREATE TRIGGER IF NOT EXISTS trg_activity_insert_user
+            BEFORE INSERT ON activity_log
+            BEGIN
+                SELECT CASE WHEN NOT EXISTS (SELECT 1 FROM user WHERE id = NEW.user_id)
+                    THEN RAISE(ABORT, 'activity user does not exist') END;
+            END;''',
+        )
+        for statement in trigger_statements:
+            cursor.execute(statement)
+
         if not cursor.execute('SELECT 1 FROM user WHERE username = ?', ('admin',)).fetchone():
-            password = os.environ.get('ADMIN_PASSWORD', 'admin')
+            password = os.environ.get('ADMIN_PASSWORD')
+            if not password:
+                raise RuntimeError('首次初始化数据库前必须设置 ADMIN_PASSWORD 环境变量，不再使用不安全的默认管理员密码。')
+            if len(password) < 12:
+                raise RuntimeError('ADMIN_PASSWORD 至少需要 12 个字符。')
+            admin_email = 'admin@example.com'
+            if cursor.execute('SELECT 1 FROM user WHERE email = ? COLLATE NOCASE', (admin_email,)).fetchone():
+                admin_email = None
             cursor.execute(
-                'INSERT INTO user (username, email, password, is_admin) VALUES (?, ?, ?, ?)',
-                ('admin', 'admin@example.com', generate_password_hash(password), 1),
+                'INSERT INTO user (username, email, password, auth_version, is_admin) VALUES (?, ?, ?, ?, ?)',
+                ('admin', admin_email, generate_password_hash(password), 0, 1),
             )
         if not cursor.execute('SELECT 1 FROM user WHERE username = ?', ('tourist',)).fetchone():
+            tourist_email = 'tourist@example.com'
+            if cursor.execute('SELECT 1 FROM user WHERE email = ? COLLATE NOCASE', (tourist_email,)).fetchone():
+                tourist_email = None
             cursor.execute(
                 'INSERT INTO user (username, email, password) VALUES (?, ?, ?)',
-                ('tourist', 'tourist@example.com', generate_password_hash(os.urandom(32).hex())),
+                ('tourist', tourist_email, generate_password_hash(os.urandom(32).hex())),
             )
+
+        # Repair legacy role corruption for the protected system accounts.
+        cursor.execute("UPDATE user SET is_admin = 1, is_sub_admin = 0, is_banned = 0, banned_reason = NULL WHERE username = 'admin'")
+        cursor.execute("UPDATE user SET is_admin = 0, is_sub_admin = 0 WHERE username = 'tourist'")
 
         conn.commit()
     except Exception:
@@ -207,7 +509,8 @@ def parse_datetime(datetime_str):
 
 class User(UserMixin):
     def __init__(self, id=None, username=None, email=None, password_hash=None, created_at=None, 
-                 is_admin=False, is_sub_admin=False, is_banned=False, banned_reason=None, last_seen=None):
+                 is_admin=False, is_sub_admin=False, is_banned=False, banned_reason=None,
+                 last_seen=None, auth_version=0):
         self.id = id
         self.username = username
         self.email = email
@@ -218,26 +521,50 @@ class User(UserMixin):
         self.is_banned = is_banned
         self.banned_reason = banned_reason
         self.last_seen = last_seen
+        self.auth_version = int(auth_version or 0)
+
+    @property
+    def is_system_account(self):
+        return (self.username or '').casefold() in {'admin', 'tourist'}
+
+    def get_id(self):
+        if self.id is None:
+            return None
+        return f'{self.id}:{self.auth_version}'
     
     def set_password(self, password):
         self.password_hash = generate_password_hash(password)
+        if self.id is not None:
+            self.auth_version += 1
     
     def check_password(self, password):
         return bool(self.password_hash) and check_password_hash(self.password_hash, password)
     
     def save(self):
+        normalized_username = (self.username or '').casefold()
+        if normalized_username == 'admin':
+            self.is_admin = True
+            self.is_sub_admin = False
+            self.is_banned = False
+            self.banned_reason = None
+        elif normalized_username == 'tourist':
+            self.is_admin = False
+            self.is_sub_admin = False
+        elif self.is_admin:
+            self.is_sub_admin = False
+
         conn = get_db_connection()
         try:
             if self.id is None:
                 conn.execute(
-                    'INSERT INTO user (username, email, password, is_admin, is_sub_admin, is_banned, banned_reason) VALUES (?, ?, ?, ?, ?, ?, ?)',
-                    (self.username, self.email, self.password_hash, int(self.is_admin), int(self.is_sub_admin), int(self.is_banned), self.banned_reason)
+                    'INSERT INTO user (username, email, password, auth_version, is_admin, is_sub_admin, is_banned, banned_reason) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+                    (self.username, self.email, self.password_hash, self.auth_version, int(self.is_admin), int(self.is_sub_admin), int(self.is_banned), self.banned_reason)
                 )
                 self.id = conn.execute('SELECT last_insert_rowid()').fetchone()[0]
             else:
                 conn.execute(
-                    'UPDATE user SET username = ?, email = ?, password = ?, is_admin = ?, is_sub_admin = ?, is_banned = ?, banned_reason = ? WHERE id = ?',
-                    (self.username, self.email, self.password_hash, int(self.is_admin), int(self.is_sub_admin), int(self.is_banned), self.banned_reason, self.id)
+                    'UPDATE user SET username = ?, email = ?, password = ?, auth_version = ?, is_admin = ?, is_sub_admin = ?, is_banned = ?, banned_reason = ? WHERE id = ?',
+                    (self.username, self.email, self.password_hash, self.auth_version, int(self.is_admin), int(self.is_sub_admin), int(self.is_banned), self.banned_reason, self.id)
                 )
             conn.commit()
         except sqlite3.Error:
@@ -260,12 +587,16 @@ class User(UserMixin):
         return self
     
     def promote_to_admin(self):
+        if (self.username or '').casefold() == 'tourist':
+            raise ValueError('游客账号不能被授予管理权限')
         self.is_admin = True
         self.is_sub_admin = False  # 管理员自动覆盖子管理员
         self.save()
         return self
     
     def promote_to_sub_admin(self):
+        if (self.username or '').casefold() == 'tourist':
+            raise ValueError('游客账号不能被授予管理权限')
         if not self.is_admin:  # 只有非管理员可以成为子管理员
             self.is_sub_admin = True
             self.save()
@@ -295,6 +626,9 @@ class User(UserMixin):
         try:
             conn.execute('UPDATE user SET last_seen = ? WHERE id = ?', (now, self.id))
             conn.commit()
+        except sqlite3.Error:
+            conn.rollback()
+            raise
         finally:
             conn.close()
         self.last_seen = now
@@ -351,33 +685,29 @@ class User(UserMixin):
             is_banned=bool(user_data['is_banned']) if 'is_banned' in columns else False,
             banned_reason=user_data['banned_reason'] if 'banned_reason' in columns else None,
             last_seen=user_data['last_seen'] if 'last_seen' in columns else None,
+            auth_version=user_data['auth_version'] if 'auth_version' in columns else 0,
         )
     
     @staticmethod
     def get_by_id(user_id):
-        conn = get_db_connection()
-        user_data = conn.execute('SELECT * FROM user WHERE id = ?', (user_id,)).fetchone()
-        conn.close()
-        
-        return User._from_row(user_data)
+        return User._from_row(fetch_one('SELECT * FROM user WHERE id = ?', (user_id,)))
     
     @staticmethod
     def get_by_username(username):
-        conn = get_db_connection()
-        user_data = conn.execute('SELECT * FROM user WHERE username = ?', (username,)).fetchone()
-        conn.close()
-        
-        return User._from_row(user_data)
+        return User._from_row(fetch_one('SELECT * FROM user WHERE username = ?', (username,)))
     
     @staticmethod
+    def get_by_username_ci(username):
+        row = fetch_one(
+            'SELECT * FROM user WHERE username = ? COLLATE NOCASE LIMIT 1', (username,)
+        )
+        return User._from_row(row)
+
+    @staticmethod
     def get_by_email(email):
-        conn = get_db_connection()
-        user_data = conn.execute(
+        return User._from_row(fetch_one(
             'SELECT * FROM user WHERE email = ? COLLATE NOCASE', (email,)
-        ).fetchone()
-        conn.close()
-        
-        return User._from_row(user_data)
+        ))
 
     @staticmethod
     def get_by_ids(user_ids):
@@ -385,11 +715,7 @@ class User(UserMixin):
         if not ids:
             return {}
         placeholders = ','.join('?' for _ in ids)
-        conn = get_db_connection()
-        rows = conn.execute(
-            f'SELECT * FROM user WHERE id IN ({placeholders})', ids
-        ).fetchall()
-        conn.close()
+        rows = fetch_all(f'SELECT * FROM user WHERE id IN ({placeholders})', ids)
         return {row['id']: User._from_row(row) for row in rows}
     
     @staticmethod
@@ -397,23 +723,19 @@ class User(UserMixin):
         page = max(1, int(page))
         per_page = max(1, int(per_page))
         conn = get_db_connection()
-        total = conn.execute('SELECT COUNT(*) FROM user').fetchone()[0]
-        page = min(page, max(1, math.ceil(total / per_page)))
-        offset = (page - 1) * per_page
+        try:
+            total = conn.execute('SELECT COUNT(*) FROM user').fetchone()[0]
+            page = min(page, max(1, math.ceil(total / per_page)))
+            offset = (page - 1) * per_page
+            users_data = conn.execute(
+                'SELECT * FROM user ORDER BY created_at DESC LIMIT ? OFFSET ?',
+                (per_page, offset),
+            ).fetchall()
+        finally:
+            conn.close()
 
-        # 获取分页数据
-        users_data = conn.execute(
-            'SELECT * FROM user ORDER BY created_at DESC LIMIT ? OFFSET ?',
-            (per_page, offset)
-        ).fetchall()
-        
         users = [User._from_row(user_data) for user_data in users_data]
-        
-        # 创建分页对象
-        pagination = Pagination(page, per_page, total, users)
-        conn.close()
-        
-        return pagination
+        return Pagination(page, per_page, total, users)
 
 class Post:
     def __init__(self, id=None, title=None, content=None, created_at=None, user_id=None,
@@ -437,6 +759,8 @@ class Post:
         self._has_accepted_comment = has_accepted_comment
     
     def save(self):
+        if self.is_deleted:
+            self.is_pinned = False
         conn = get_db_connection()
         try:
             if self.id is None:
@@ -489,12 +813,10 @@ class Post:
         """检查该帖子是否有被采纳的评论"""
         if self._has_accepted_comment is not None:
             return bool(self._has_accepted_comment)
-        conn = get_db_connection()
-        result = conn.execute(
+        result = fetch_one(
             'SELECT COUNT(*) FROM comment WHERE post_id = ? AND is_accepted = 1 AND is_deleted = 0',
-            (self.id,)
-        ).fetchone()[0]
-        conn.close()
+            (self.id,),
+        )[0]
         self._has_accepted_comment = result > 0
         return self._has_accepted_comment
 
@@ -503,12 +825,10 @@ class Post:
         """获取该帖子的总评论数（包括所有层级的回复）"""
         if self._comment_count is not None:
             return self._comment_count
-        conn = get_db_connection()
-        result = conn.execute(
+        result = fetch_one(
             'SELECT COUNT(*) FROM comment WHERE post_id = ? AND is_deleted = 0',
-            (self.id,)
-        ).fetchone()[0]
-        conn.close()
+            (self.id,),
+        )[0]
         self._comment_count = result
         return self._comment_count
 
@@ -546,21 +866,20 @@ class Post:
 
         missing_ids = [
             post.id for post in posts
-            if post.id is not None and post._comment_count is None
+            if post.id is not None
+            and (post._comment_count is None or post._has_accepted_comment is None)
         ]
         if not missing_ids:
             return posts
         placeholders = ','.join('?' for _ in missing_ids)
-        conn = get_db_connection()
-        rows = conn.execute(
+        rows = fetch_all(
             f'''SELECT post_id, COUNT(*) AS comment_count,
                        MAX(CASE WHEN is_accepted = 1 THEN 1 ELSE 0 END) AS has_accepted
                 FROM comment
                 WHERE is_deleted = 0 AND post_id IN ({placeholders})
                 GROUP BY post_id''',
             missing_ids,
-        ).fetchall()
-        conn.close()
+        )
         stats = {row['post_id']: row for row in rows}
         for post in posts:
             if post.id not in missing_ids:
@@ -572,55 +891,55 @@ class Post:
     
     @staticmethod
     def get_by_id(post_id):
-        conn = get_db_connection()
-        post_data = conn.execute('SELECT * FROM post WHERE id = ?', (post_id,)).fetchone()
-        conn.close()
-        
-        return Post._from_row(post_data)
+        return Post._from_row(fetch_one('SELECT * FROM post WHERE id = ?', (post_id,)))
     
     @staticmethod
     def get_all(page=1, per_page=10, include_deleted=False):
         page = max(1, int(page))
         per_page = max(1, int(per_page))
         conn = get_db_connection()
-        if include_deleted:
-            total = conn.execute('SELECT COUNT(*) FROM post').fetchone()[0]
-        else:
-            total = conn.execute('SELECT COUNT(*) FROM post WHERE is_deleted = 0 AND (is_tourist_post = 0 OR is_approved = 1)').fetchone()[0]
-        page = min(page, max(1, math.ceil(total / per_page)))
-        offset = (page - 1) * per_page
+        try:
+            if include_deleted:
+                total = conn.execute('SELECT COUNT(*) FROM post').fetchone()[0]
+            else:
+                total = conn.execute(
+                    'SELECT COUNT(*) FROM post WHERE is_deleted = 0 '
+                    'AND (is_tourist_post = 0 OR is_approved = 1)'
+                ).fetchone()[0]
+            page = min(page, max(1, math.ceil(total / per_page)))
+            offset = (page - 1) * per_page
 
-        # 获取分页数据
-        if include_deleted:
-            posts_data = conn.execute(
-                '''SELECT p.*,
-                          (SELECT COUNT(*) FROM comment c WHERE c.post_id = p.id AND c.is_deleted = 0) AS comment_count,
-                          EXISTS(SELECT 1 FROM comment c WHERE c.post_id = p.id AND c.is_accepted = 1 AND c.is_deleted = 0) AS has_accepted_comment
-                   FROM post p ORDER BY p.is_pinned DESC, p.created_at DESC LIMIT ? OFFSET ?''',
-                (per_page, offset)
-            ).fetchall()
-        else:
-            posts_data = conn.execute(
-                '''SELECT p.*,
-                          (SELECT COUNT(*) FROM comment c WHERE c.post_id = p.id AND c.is_deleted = 0) AS comment_count,
-                          EXISTS(SELECT 1 FROM comment c WHERE c.post_id = p.id AND c.is_accepted = 1 AND c.is_deleted = 0) AS has_accepted_comment
-                   FROM post p
-                   WHERE p.is_deleted = 0 AND (p.is_tourist_post = 0 OR p.is_approved = 1)
-                   ORDER BY p.is_pinned DESC, p.created_at DESC LIMIT ? OFFSET ?''',
-                (per_page, offset)
-            ).fetchall()
+            if include_deleted:
+                posts_data = conn.execute(
+                    '''SELECT p.*,
+                              (SELECT COUNT(*) FROM comment c WHERE c.post_id = p.id AND c.is_deleted = 0) AS comment_count,
+                              EXISTS(SELECT 1 FROM comment c WHERE c.post_id = p.id AND c.is_accepted = 1 AND c.is_deleted = 0) AS has_accepted_comment
+                       FROM post p ORDER BY p.is_pinned DESC, p.created_at DESC LIMIT ? OFFSET ?''',
+                    (per_page, offset),
+                ).fetchall()
+            else:
+                posts_data = conn.execute(
+                    '''SELECT p.*,
+                              (SELECT COUNT(*) FROM comment c WHERE c.post_id = p.id AND c.is_deleted = 0) AS comment_count,
+                              EXISTS(SELECT 1 FROM comment c WHERE c.post_id = p.id AND c.is_accepted = 1 AND c.is_deleted = 0) AS has_accepted_comment
+                       FROM post p
+                       WHERE p.is_deleted = 0 AND (p.is_tourist_post = 0 OR p.is_approved = 1)
+                       ORDER BY p.is_pinned DESC, p.created_at DESC LIMIT ? OFFSET ?''',
+                    (per_page, offset),
+                ).fetchall()
+        finally:
+            conn.close()
 
         posts = [Post._from_row(post_data) for post_data in posts_data]
         Post.preload(posts)
-        
-        # 创建分页对象
-        pagination = Pagination(page, per_page, total, posts)
-        conn.close()
-        
-        return pagination
+        return Pagination(page, per_page, total, posts)
     
     def pin(self):
-        """将反馈置顶"""
+        """将可公开展示的反馈置顶。"""
+        if self.is_deleted:
+            raise ValueError('已删除的反馈不能置顶')
+        if self.is_tourist_post and self.is_approved is not True:
+            raise ValueError('待审核或已拒绝的游客反馈不能置顶')
         self.is_pinned = True
         self.save()
         return self
@@ -632,18 +951,23 @@ class Post:
         return self
     
     def approve(self):
-        """审核通过帖子"""
+        """审核通过游客反馈。"""
+        if not self.is_tourist_post:
+            raise ValueError('只有游客反馈需要审核')
+        if self.is_deleted:
+            raise ValueError('已删除的反馈不能审核通过')
         self.is_approved = True
         self.save()
         return self
     
     def reject(self):
-        """拒绝帖子审核"""
+        """拒绝游客反馈；不隐式改变删除状态。"""
+        if not self.is_tourist_post:
+            raise ValueError('只有游客反馈需要审核')
+        if self.is_deleted:
+            raise ValueError('已删除的反馈不能执行审核操作')
         self.is_approved = False
-        # 确保不将帖子标记为已删除
-        self.is_deleted = False
-        self.deleted_at = None
-        self.deleted_by = None
+        self.is_pinned = False
         self.save()
         return self
 
@@ -674,6 +998,20 @@ class Comment:
     def save(self):
         conn = get_db_connection()
         try:
+            post_row = conn.execute('SELECT is_deleted FROM post WHERE id = ?', (self.post_id,)).fetchone()
+            if post_row is None:
+                raise ValueError('评论所属反馈不存在')
+            if self.id is None and bool(post_row['is_deleted']):
+                raise ValueError('已删除的反馈不能新增评论')
+            if self.parent_id is not None:
+                if self.id is not None and self.parent_id == self.id:
+                    raise ValueError('评论不能回复自己')
+                parent = conn.execute(
+                    'SELECT post_id, is_deleted FROM comment WHERE id = ?', (self.parent_id,)
+                ).fetchone()
+                if parent is None or parent['post_id'] != self.post_id or bool(parent['is_deleted']):
+                    raise ValueError('父评论不存在、已删除或不属于同一反馈')
+
             if self.id is None:
                 conn.execute(
                     'INSERT INTO comment (content, user_id, post_id, parent_id, is_accepted, accepted_by) VALUES (?, ?, ?, ?, ?, ?)',
@@ -692,7 +1030,7 @@ class Comment:
                 )
 
             conn.commit()
-        except sqlite3.Error:
+        except (sqlite3.Error, ValueError):
             conn.rollback()
             raise
         finally:
@@ -700,81 +1038,97 @@ class Comment:
         return self
     
     def soft_delete(self, deleted_by_user_id):
-        """软删除评论"""
-        # 设置已删除状态
+        """软删除评论；若已采纳，同时原子撤销采纳。"""
+        deleted_at = datetime.now(timezone.utc).isoformat()
+        conn = get_db_connection()
+        try:
+            cursor = conn.execute(
+                '''UPDATE comment SET is_deleted = 1, deleted_by = ?, deleted_at = ?,
+                                      is_accepted = 0, accepted_by = NULL WHERE id = ?''',
+                (deleted_by_user_id, deleted_at, self.id),
+            )
+            if cursor.rowcount != 1:
+                raise ValueError('评论不存在')
+            conn.commit()
+        except Exception:
+            conn.rollback()
+            raise
+        finally:
+            conn.close()
         self.is_deleted = True
         self.deleted_by = deleted_by_user_id
-        
-        # 设置删除时间
-        from datetime import datetime, timezone
-        self.deleted_at = datetime.now(timezone.utc).isoformat()
-        
-        self.save()
+        self.deleted_at = deleted_at
+        self.is_accepted = False
+        self.accepted_by = None
         return self
     
     def restore(self):
-        """恢复已删除的评论"""
+        """恢复已删除的评论。"""
         conn = get_db_connection()
-        
-        # 检查表结构是否包含所需字段
-        cursor = conn.cursor()
-        table_info = cursor.execute("PRAGMA table_info(comment)").fetchall()
-        columns = [column[1] for column in table_info]
-        
-        # 基础恢复 - is_deleted总是应该存在
-        update_fields = ["is_deleted = 0"]
-        
-        # 其他字段根据表结构决定是否更新
-        if "deleted_at" in columns:
-            update_fields.append("deleted_at = NULL")
-        
-        if "deleted_by" in columns:
-            update_fields.append("deleted_by = NULL")
-        
-        # 执行更新语句
-        update_sql = f"UPDATE comment SET {', '.join(update_fields)} WHERE id = ?"
-        conn.execute(update_sql, (self.id,))
-        
-        conn.commit()
-        conn.close()
-        
-        # 更新本地对象
+        try:
+            conn.execute(
+                'UPDATE comment SET is_deleted = 0, deleted_at = NULL, deleted_by = NULL WHERE id = ?',
+                (self.id,),
+            )
+            conn.commit()
+        except sqlite3.Error:
+            conn.rollback()
+            raise
+        finally:
+            conn.close()
+
         self.is_deleted = False
         self.deleted_at = None
         self.deleted_by = None
+        return self
     
     def accept(self, accepted_by_user_id):
-        """采纳评论"""
-        # 先将同一帖子的所有评论的采纳状态重置
+        """采纳评论；同一帖子最多保留一条采纳评论。"""
         conn = get_db_connection()
-        conn.execute('''
-        UPDATE comment SET is_accepted = 0, accepted_by = NULL
-        WHERE post_id = ? AND id != ?
-        ''', (self.post_id, self.id))
-        
-        # 将当前评论设为采纳
-        conn.execute('''
-        UPDATE comment SET is_accepted = 1, accepted_by = ?
-        WHERE id = ?
-        ''', (accepted_by_user_id, self.id))
-        conn.commit()
-        conn.close()
-            
-        self.is_accepted = 1
+        try:
+            if conn.execute(
+                '''SELECT 1 FROM post WHERE id = ? AND is_deleted = 0
+                   AND (is_tourist_post = 0 OR is_approved = 1)''',
+                (self.post_id,),
+            ).fetchone() is None:
+                raise ValueError('已删除、不存在或未通过审核的反馈不能采纳评论')
+            conn.execute(
+                'UPDATE comment SET is_accepted = 0, accepted_by = NULL WHERE post_id = ? AND id != ?',
+                (self.post_id, self.id),
+            )
+            cursor = conn.execute(
+                'UPDATE comment SET is_accepted = 1, accepted_by = ? WHERE id = ? AND post_id = ? AND is_deleted = 0',
+                (accepted_by_user_id, self.id, self.post_id),
+            )
+            if cursor.rowcount != 1:
+                raise ValueError('评论不存在、已删除或不属于指定帖子')
+            conn.commit()
+        except Exception:
+            conn.rollback()
+            raise
+        finally:
+            conn.close()
+
+        self.is_accepted = True
         self.accepted_by = accepted_by_user_id
         return True
     
     def cancel_accept(self):
-        """取消采纳"""
+        """取消采纳。"""
         conn = get_db_connection()
-        conn.execute('''
-        UPDATE comment SET is_accepted = 0, accepted_by = NULL
-        WHERE id = ?
-        ''', (self.id,))
-        conn.commit()
-        conn.close()
-            
-        self.is_accepted = 0
+        try:
+            conn.execute(
+                'UPDATE comment SET is_accepted = 0, accepted_by = NULL WHERE id = ?',
+                (self.id,),
+            )
+            conn.commit()
+        except sqlite3.Error:
+            conn.rollback()
+            raise
+        finally:
+            conn.close()
+
+        self.is_accepted = False
         self.accepted_by = None
         return True
 
@@ -874,27 +1228,20 @@ class Comment:
     
     @staticmethod
     def get_by_id(comment_id):
-        conn = get_db_connection()
-        comment_data = conn.execute('SELECT * FROM comment WHERE id = ?', (comment_id,)).fetchone()
-        conn.close()
-        
-        return Comment._from_row(comment_data)
+        return Comment._from_row(fetch_one('SELECT * FROM comment WHERE id = ?', (comment_id,)))
     
     @staticmethod
     def get_comments_by_post_id(post_id, include_deleted=False, max_depth=5):
-        conn = get_db_connection()
-        
         if include_deleted:
-            comments_data = conn.execute(
+            comments_data = fetch_all(
                 'SELECT * FROM comment WHERE post_id = ? ORDER BY is_accepted DESC, created_at',
-                (post_id,)
-            ).fetchall()
+                (post_id,),
+            )
         else:
-            comments_data = conn.execute(
+            comments_data = fetch_all(
                 'SELECT * FROM comment WHERE post_id = ? AND is_deleted = 0 ORDER BY is_accepted DESC, created_at',
-                (post_id,)
-            ).fetchall()
-        conn.close()
+                (post_id,),
+            )
 
         comments = [
             Comment._from_row(comment_data, include_deleted=include_deleted)
@@ -947,20 +1294,17 @@ class Comment:
         if depth >= max_depth:
             return []  # 防止过深递归
             
-        conn = get_db_connection()
-        
         # 根据include_deleted参数决定是否包含已删除评论
         if include_deleted:
-            replies_data = conn.execute(
+            replies_data = fetch_all(
                 'SELECT * FROM comment WHERE parent_id = ? ORDER BY is_accepted DESC, created_at',
-                (comment_id,)
-            ).fetchall()
+                (comment_id,),
+            )
         else:
-            replies_data = conn.execute(
+            replies_data = fetch_all(
                 'SELECT * FROM comment WHERE parent_id = ? AND (is_deleted = 0 OR is_deleted IS NULL) ORDER BY is_accepted DESC, created_at',
-                (comment_id,)
-            ).fetchall()
-        
+                (comment_id,),
+            )
         replies = []
         users = User.get_by_ids(reply_data['user_id'] for reply_data in replies_data)
         for reply_data in replies_data:
@@ -981,7 +1325,6 @@ class Comment:
             
             replies.append(reply)
         
-        conn.close()
         return replies
 
     @staticmethod
@@ -993,16 +1336,14 @@ class Comment:
             post_id: 帖子ID
             include_deleted: 是否包含已删除的评论
         """
-        conn = get_db_connection()
-        
         # 获取当前帖子下所有已采纳的评论（不限制parent_id）
         if include_deleted:
             query = 'SELECT * FROM comment WHERE post_id = ? AND is_accepted = 1 ORDER BY created_at'
         else:
             query = 'SELECT * FROM comment WHERE post_id = ? AND is_accepted = 1 AND (is_deleted = 0 OR is_deleted IS NULL) ORDER BY created_at'
-        
-        accepted_comments_data = conn.execute(query, (post_id,)).fetchall()
-        
+
+        accepted_comments_data = fetch_all(query, (post_id,))
+
         accepted_comments = []
         user_ids = set()
         for comment_data in accepted_comments_data:
@@ -1017,7 +1358,6 @@ class Comment:
             
             accepted_comments.append(comment)
         
-        conn.close()
         return accepted_comments
 
 class Pagination:
@@ -1074,15 +1414,18 @@ class ActivityLog:
         
     def save(self):
         conn = get_db_connection()
-        conn.execute(
-            'INSERT INTO activity_log (user_id, action, target_type, target_id, description, created_at) VALUES (?, ?, ?, ?, ?, ?)',
-            (self.user_id, self.action, self.target_type, self.target_id, self.description, self.created_at)
-        )
-        conn.commit()
-        
-        # 获取新插入记录的ID
-        self.id = conn.execute('SELECT last_insert_rowid()').fetchone()[0]
-        conn.close()
+        try:
+            cursor = conn.execute(
+                'INSERT INTO activity_log (user_id, action, target_type, target_id, description, created_at) VALUES (?, ?, ?, ?, ?, ?)',
+                (self.user_id, self.action, self.target_type, self.target_id, self.description, self.created_at),
+            )
+            self.id = cursor.lastrowid
+            conn.commit()
+        except sqlite3.Error:
+            conn.rollback()
+            raise
+        finally:
+            conn.close()
         return self
     
     @staticmethod
@@ -1092,18 +1435,14 @@ class ActivityLog:
     
     @staticmethod
     def get_recent_logs(limit=20):
-        conn = get_db_connection()
-        logs = conn.execute(
-            '''
-            SELECT a.*, u.username as username 
-            FROM activity_log a 
-            JOIN user u ON a.user_id = u.id 
-            ORDER BY a.created_at DESC 
-            LIMIT ?
-            ''', 
-            (limit,)
-        ).fetchall()
-        conn.close()
+        logs = fetch_all(
+            '''SELECT a.*, u.username as username
+               FROM activity_log a
+               JOIN user u ON a.user_id = u.id
+               ORDER BY a.created_at DESC
+               LIMIT ?''',
+            (limit,),
+        )
         
         result = []
         for log in logs:
@@ -1123,10 +1462,7 @@ class Settings:
     @staticmethod
     def get(key, default=None):
         """获取设置值"""
-        conn = get_db_connection()
-        setting = conn.execute('SELECT value FROM settings WHERE key = ?', (key,)).fetchone()
-        conn.close()
-        
+        setting = fetch_one('SELECT value FROM settings WHERE key = ?', (key,))
         if setting:
             return setting['value']
         return default
@@ -1163,10 +1499,7 @@ class Settings:
     @staticmethod
     def get_all():
         """获取所有设置"""
-        conn = get_db_connection()
-        settings = conn.execute('SELECT key, value, description, updated_at FROM settings').fetchall()
-        conn.close()
-        return settings 
+        return fetch_all('SELECT key, value, description, updated_at FROM settings')
 
     @staticmethod
     def get_dict():

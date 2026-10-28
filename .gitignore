@@ -7,3 +7,6 @@ feedback.db-shm
 feedback.db-wal
 .coverage
 htmlcov/
+.secret_key
+.pytest_cache/
+.uploads/
