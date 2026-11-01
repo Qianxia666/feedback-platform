@@ -1,225 +1,76 @@
 <!DOCTYPE html>
 <html lang="zh-CN">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>注册 - {{ platform_name or '反馈平台' }}</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap">
-    <style>
-        body {
-            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-            background: linear-gradient(135deg, #f8f9fd 0%, #f7f7f7 100%);
-        }
-        /* 防止iOS Safari缩放 */
-        input[type="text"],
-        input[type="email"],
-        input[type="password"],
-        textarea,
-        select {
-            font-size: 16px !important;
-        }
-        /* 自定义焦点样式 */
-        input:focus {
-            ring-color: #4589EB !important;
-            border-color: #4589EB !important;
-            box-shadow: 0 0 0 3px rgba(69, 137, 235, 0.1) !important;
-        }
-        /* 自定义按钮样式 */
-        .btn-primary {
-            background-color: #4589EB !important;
-        }
-        .btn-primary:hover {
-            background-color: #3b7dd8 !important;
-        }
-    </style>
+    <meta name="theme-color" content="#15171c">
+    <title>注册 · {{ platform_name or '反馈平台' }}</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/issue.css') }}">
 </head>
-<body class="min-h-screen bg-gray-50">
 
-<div class="flex min-h-screen flex-col lg:flex-row">
-    <!-- 左侧蓝色部分 -->
-    <div class="hidden lg:flex lg:w-1/2 text-white flex-col justify-between p-6 lg:p-8 sticky top-0 h-screen" style="background-color: #4589EB;">
-        <div></div>
-        <div class="text-center">
-            <h1 class="text-2xl lg:text-3xl xl:text-4xl font-bold leading-tight">你的声音，值得被听见！</h1>
-        </div>
-        <div class="text-xs lg:text-sm">
-            <a href="https://github.com/Qianxia666/feedback-platform" target="_blank" rel="noopener noreferrer" class="hover:underline">© feedback-platform</a>
-        </div>
-    </div>
-    
-    <!-- 右侧白色注册部分 -->
-    <div class="w-full lg:w-1/2 bg-white flex items-center justify-center py-8 px-4 md:px-8 min-h-screen">
-        <div class="w-full max-w-md">
-            <div class="text-center mb-6">
-                <h1 class="text-3xl font-bold text-gray-900 mb-2">创建账号</h1>
-                <div class="h-1 w-16 rounded-full mx-auto" style="background: #4589EB;"></div>
-            </div>
-            
-            <form method="post" action="" class="space-y-4">
-                {{ form.hidden_tag() }}
-                
-                <div>
-                    <label for="username" class="block text-sm font-medium text-gray-700 mb-1">用户名</label>
-                    {{ form.username(class="w-full px-3 py-2 border border-gray-300 rounded-2xl shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200", id="username", style="focus:ring-color: #4589EB; focus:border-color: #4589EB;") }}
-                    {% if form.username.errors %}
-                    <div class="text-red-500 text-sm mt-1">
-                        {% for error in form.username.errors %}
-                        <p>{{ error }}</p>
-                        {% endfor %}
-                    </div>
-                    {% endif %}
-                </div>
+<body class="auth-body">
+    <div class="auth">
+        <aside class="auth-brand">
+            <span class="auth-mark" aria-hidden="true"><i></i><i></i><i></i></span>
+            <h1 class="auth-slogan">把问题写下来，<br>它就进入了队列。</h1>
+            <p class="auth-sub">一个账号就够：提交反馈、收到回复、查看处理到哪一步。</p>
+            <span class="auth-foot">{{ platform_name or '反馈平台' }}</span>
+        </aside>
 
-                <div>
-                    <label for="email" class="block text-sm font-medium text-gray-700 mb-1">电子邮箱</label>
-                    {{ form.email(class="w-full px-3 py-2 border border-gray-300 rounded-2xl shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200", id="email", style="focus:ring-color: #4589EB; focus:border-color: #4589EB;") }}
-                    {% if form.email.errors %}
-                    <div class="text-red-500 text-sm mt-1">
-                        {% for error in form.email.errors %}
-                        <p>{{ error }}</p>
-                        {% endfor %}
-                    </div>
-                    {% endif %}
-                </div>
-
-                <div>
-                    <label for="password" class="block text-sm font-medium text-gray-700 mb-1">密码</label>
-                    <div class="relative">
-                        {{ form.password(class="w-full px-3 py-2 border border-gray-300 rounded-2xl shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200", id="password", style="focus:ring-color: #4589EB; focus:border-color: #4589EB;") }}
-                        <button type="button" class="password-toggle absolute inset-y-0 right-0 pr-3 flex items-center text-gray-600 focus:outline-none" aria-label="显示或隐藏密码" title="显示或隐藏密码">
-                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 eye-open" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                            </svg>
-                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 eye-closed hidden" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21" />
-                            </svg>
-                        </button>
-                    </div>
-                    {% if form.password.errors %}
-                    <div class="text-red-500 text-sm mt-1">
-                        {% for error in form.password.errors %}
-                        <p>{{ error }}</p>
-                        {% endfor %}
-                    </div>
-                    {% endif %}
-                </div>
-
-                <div>
-                    <label for="password2" class="block text-sm font-medium text-gray-700 mb-1">确认密码</label>
-                    <div class="relative">
-                        {{ form.password2(class="w-full px-3 py-2 border border-gray-300 rounded-2xl shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200", id="password2", style="focus:ring-color: #4589EB; focus:border-color: #4589EB;") }}
-                        <button type="button" class="password-toggle absolute inset-y-0 right-0 pr-3 flex items-center text-gray-600 focus:outline-none" aria-label="显示或隐藏密码" title="显示或隐藏密码">
-                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 eye-open" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                            </svg>
-                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 eye-closed hidden" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21" />
-                            </svg>
-                        </button>
-                    </div>
-                    {% if form.password2.errors %}
-                    <div class="text-red-500 text-sm mt-1">
-                        {% for error in form.password2.errors %}
-                        <p>{{ error }}</p>
-                        {% endfor %}
-                    </div>
-                    {% endif %}
-                </div>
-                
-                <div class="pt-2">
-                    {{ form.submit(class="w-full flex justify-center py-3 px-4 border border-transparent rounded-full shadow-md text-sm font-medium text-white hover:opacity-90 focus:outline-none focus:ring-2 focus:ring-offset-2 transition-all duration-300 transform hover:-translate-y-1", style="background-color: #4589EB; focus:ring-color: #4589EB;") }}
-                </div>
-            </form>
-            
-            <div class="mt-6 text-center">
-                <p class="text-sm text-gray-600">
-                    已有账号？ <a href="{{ url_for('login') }}" class="font-medium hover:underline" style="color: #4589EB;">立即登录</a>
-                </p>
-            </div>
+        <section class="auth-main">
+            <h2 class="auth-title">创建账号</h2>
+            <p class="auth-lede">只需要一个用户名和密码。</p>
 
             {% with messages = get_flashed_messages() %}
             {% if messages %}
-            <div class="mt-6 bg-red-50 border-l-4 border-red-400 p-4 rounded-r-2xl">
-                <div class="flex">
-                    <div class="flex-shrink-0">
-                        <svg class="h-5 w-5 text-red-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-                        </svg>
-                    </div>
-                    <div class="ml-3">
-                        {% for message in messages %}
-                        <p class="text-sm text-red-700">{{ message }}</p>
-                        {% endfor %}
-                    </div>
-                </div>
+            <div class="auth-flash">
+                {% for message in messages %}<p>{{ message }}</p>{% endfor %}
             </div>
             {% endif %}
             {% endwith %}
-        </div>
+
+            <form method="post" action="">
+                {{ form.hidden_tag() }}
+
+                <div class="field {% if form.username.errors %}has-error{% endif %}">
+                    <label class="field-label" for="username">用户名</label>
+                    {{ form.username(id="username", placeholder="用于署名", autocomplete="username") }}
+                    {% if form.username.errors %}
+                    <span class="error">{% for e in form.username.errors %}{{ e }}{% endfor %}</span>
+                    {% endif %}
+                </div>
+
+                <div class="field {% if form.email.errors %}has-error{% endif %}">
+                    <label class="field-label" for="email">邮箱 <span class="opt">可选</span></label>
+                    {{ form.email(id="email", placeholder="用于找回账号", autocomplete="email") }}
+                    {% if form.email.errors %}
+                    <span class="error">{% for e in form.email.errors %}{{ e }}{% endfor %}</span>
+                    {% endif %}
+                </div>
+
+                <div class="field {% if form.password.errors %}has-error{% endif %}">
+                    <label class="field-label" for="password">密码</label>
+                    <div class="pw-wrap">
+                        {{ form.password(id="password", placeholder="至少 6 位", autocomplete="new-password") }}
+                        <button type="button" class="pw-toggle password-toggle" aria-label="显示或隐藏密码">
+                            <span class="eye-open" aria-hidden="true">显示</span>
+                            <span class="eye-closed hidden" aria-hidden="true">隐藏</span>
+                        </button>
+                    </div>
+                    {% if form.password.errors %}
+                    <span class="error">{% for e in form.password.errors %}{{ e }}{% endfor %}</span>
+                    {% endif %}
+                </div>
+
+                {{ form.submit(value="创建账号", class="auth-submit") }}
+            </form>
+
+            <p class="auth-switch">已经有账号？<a href="{{ url_for('login') }}">直接登录</a></p>
+        </section>
     </div>
-</div>
 
-<!-- 密码显示/隐藏功能的JavaScript -->
-<script>
-    document.addEventListener('DOMContentLoaded', function() {
-        const passwordToggles = document.querySelectorAll('.password-toggle');
-
-        passwordToggles.forEach(toggle => {
-            toggle.addEventListener('click', function() {
-                const passwordField = this.parentElement.querySelector('input');
-                const eyeOpen = this.querySelector('.eye-open');
-                const eyeClosed = this.querySelector('.eye-closed');
-
-                if (passwordField.type === 'password') {
-                    passwordField.type = 'text';
-                    eyeOpen.classList.add('hidden');
-                    eyeClosed.classList.remove('hidden');
-                } else {
-                    passwordField.type = 'password';
-                    eyeOpen.classList.remove('hidden');
-                    eyeClosed.classList.add('hidden');
-                }
-            });
-        });
-    });
-
-    // 表单验证
-    const form = document.querySelector('form');
-    if (form) {
-        form.addEventListener('submit', function(e) {
-            const username = document.getElementById('username').value.trim();
-            const email = document.getElementById('email').value.trim();
-            const password = document.getElementById('password').value;
-            const password2 = document.getElementById('password2').value;
-
-            if (!username) {
-                e.preventDefault();
-                alert('请输入用户名');
-                return;
-            }
-
-            if (!email) {
-                e.preventDefault();
-                alert('请输入邮箱');
-                return;
-            }
-
-            if (!password) {
-                e.preventDefault();
-                alert('请输入密码');
-                return;
-            }
-
-            if (password !== password2) {
-                e.preventDefault();
-                alert('两次输入的密码不一致');
-                return;
-            }
-        });
-    }
-</script>
+    <script src="{{ url_for('static', filename='js/passport.js') }}"></script>
 </body>
+
 </html>

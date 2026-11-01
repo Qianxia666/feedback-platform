@@ -1,261 +1,129 @@
 {% extends "base.html" %}
 
 {% block content %}
-<div class="max-w-4xl mx-auto">
-    <!-- 返回按钮 -->
-    <a href="{{ url_for('index') }}" class="inline-flex items-center text-gray-600 hover:text-black mb-6 sm:mb-8 group text-sm sm:text-base">
-        <svg class="w-4 h-4 sm:w-5 sm:h-5 mr-1.5 sm:mr-2 group-hover:-translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path>
-        </svg>
-        返回广场
-    </a>
+{% set is_staff = current_user.is_authenticated and (current_user.is_admin or current_user.is_sub_admin) %}
 
-    <!-- 用户信息卡 -->
-    <div class="bg-white rounded-lg sm:rounded-xl shadow-md overflow-hidden mb-6 sm:mb-8 border border-gray-200 animate-fade-in animate-once">
-        <div class="border-b border-gray-200 px-4 sm:px-6 py-3 sm:py-4">
-            <h1 class="text-lg sm:text-xl md:text-2xl lg:text-3xl font-bold text-gray-900 flex flex-col sm:flex-row sm:items-center pl-3 sm:pl-4 border-l-4" style="border-left-color: #4589EB;">
-                <div class="w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-gray-200 flex items-center justify-center text-gray-700 font-semibold text-base sm:text-lg mr-0 sm:mr-3 mb-2 sm:mb-0">
-                    {{ user.username[0] | upper }}
-                </div>
-                <div class="flex flex-col sm:flex-row sm:items-center">
-                    <span class="mb-1 sm:mb-0">{{ user.username }}</span>
-                    <div class="flex flex-wrap gap-1 sm:gap-2 sm:ml-2">
-                        {% if user.is_banned %}
-                        <span class="bg-red-600 text-white text-xs px-1.5 sm:px-2 py-0.5 rounded uppercase tracking-wider font-semibold">已封禁</span>
-                        {% endif %}
-                        {% if user.is_admin %}
-                        <span class="text-white text-xs px-1.5 sm:px-2 py-0.5 rounded uppercase tracking-wider font-semibold" style="background-color: #4589EB;">管理员</span>
-                        {% elif user.is_sub_admin %}
-                        <span class="text-white text-xs px-1.5 sm:px-2 py-0.5 rounded uppercase tracking-wider font-semibold" style="background-color: #4589EB;">子管理员</span>
-                        {% endif %}
-                    </div>
-                </div>
-            </h1>
-        </div>
-        <div class="p-4 sm:p-6 md:p-8">
+<div class="profile-head">
+    <span class="avatar-lg">{{ user.username[0]|upper }}</span>
+    <div class="profile-id">
+        <h1 class="profile-name">
+            {{ user.username }}
+            {% if user.is_banned %}<span class="pill pill-blocked">已封禁</span>{% endif %}
+            {% if user.is_admin %}<span class="role-tag">管理员</span>
+            {% elif user.is_sub_admin %}<span class="role-tag">子管理员</span>
+            {% elif user.username == 'tourist' %}<span class="role-tag">游客</span>{% endif %}
+        </h1>
+        <p class="profile-meta">
+            UID {{ user.id }}
+            · 加入于 {% if user.created_at %}{{ user.created_at|format_datetime('%Y-%m-%d') }}{% else %}未知{% endif %}
+            · 最后活跃 {% if user.last_seen %}{{ user.last_seen|format_datetime('%m-%d %H:%M') }}{% else %}未知{% endif %}
+        </p>
+    </div>
+
+    <div class="profile-actions">
+        {% if current_user.is_authenticated and current_user.id == user.id %}
+            {% if current_user.username != 'tourist' %}
+            <a class="btn btn-ghost" href="{{ url_for('edit_profile') }}">编辑资料</a>
+            {% endif %}
+            {% if is_staff %}
+            <a class="btn btn-ghost" href="{{ url_for('admin_dashboard') }}">管理台</a>
+            {% endif %}
+        {% endif %}
+
+        {% if is_staff and current_user.id != user.id %}
+            <a class="btn btn-ghost" href="{{ url_for('edit_user', user_id=user.id) }}">编辑用户</a>
             {% if user.is_banned %}
-            <div class="bg-red-50 border-l-4 border-red-500 p-3 sm:p-4 rounded-r-lg mb-4 sm:mb-6">
-                <div class="flex">
-                    <div class="flex-shrink-0">
-                        <svg class="h-4 w-4 sm:h-5 sm:w-5 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-                        </svg>
-                    </div>
-                    <div class="ml-2 sm:ml-3">
-                        <p class="text-xs sm:text-sm text-red-600 font-medium">此用户已被封禁</p>
-                        {% if user.banned_reason %}
-                        <p class="text-xs sm:text-sm text-red-500 mt-1">封禁原因: {{ user.banned_reason }}</p>
-                        {% endif %}
-                    </div>
-                </div>
-            </div>
-            {% endif %}
-
-            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6 mb-4 sm:mb-6">
-                <div class="bg-gray-50 rounded-lg p-3 sm:p-4 border border-gray-200">
-                    <div class="text-xs sm:text-sm text-gray-500 mb-1">用户ID</div>
-                    <div class="font-medium text-sm sm:text-base">{{ user.id }}</div>
-                </div>
-                <div class="bg-gray-50 rounded-lg p-3 sm:p-4 border border-gray-200">
-                    <div class="text-xs sm:text-sm text-gray-500 mb-1">注册时间</div>
-                    <div class="font-medium text-sm sm:text-base">{% if user.created_at %}{{ user.created_at|format_datetime('%Y-%m-%d %H:%M') }}{% else %}未知{% endif %}</div>
-                </div>
-            </div>
-
-            <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 sm:gap-6 mb-4 sm:mb-6">
-                <div class="flex flex-col items-center bg-gray-50 rounded-lg p-3 sm:p-4 border border-gray-200">
-                    <div class="text-2xl sm:text-3xl font-bold text-gray-900 mb-1">{{ user_posts|length }}</div>
-                    <div class="text-xs sm:text-sm text-gray-500 text-center">发布的反馈</div>
-                </div>
-                <div class="flex flex-col items-center bg-gray-50 rounded-lg p-3 sm:p-4 border border-gray-200">
-                    <div class="text-2xl sm:text-3xl font-bold text-gray-900 mb-1">{{ user_comments|length }}</div>
-                    <div class="text-xs sm:text-sm text-gray-500 text-center">发表的评论</div>
-                </div>
-                <div class="flex flex-col items-center bg-gray-50 rounded-lg p-3 sm:p-4 border border-gray-200">
-                    <div class="text-lg sm:text-xl lg:text-2xl xl:text-3xl font-bold text-gray-900 mb-1 text-center leading-tight">{{ user.last_seen|format_datetime('%m-%d') if user.last_seen else '未知' }}</div>
-                    <div class="text-xs sm:text-sm text-gray-500 text-center">最后活跃</div>
-                </div>
-            </div>
-            
-            <!-- 管理操作 -->
-            {% if current_user.is_authenticated and (current_user.is_admin or (current_user.is_sub_admin and not user.is_admin and not user.is_sub_admin)) %}
-            <div class="border-t border-gray-200 pt-6 mt-6">
-                <h3 class="text-lg font-semibold text-gray-800 mb-4">管理操作</h3>
-                <div class="flex flex-wrap gap-3">
-                    <a href="{{ url_for('edit_user', user_id=user.id) }}" class="inline-flex items-center px-4 py-2 text-white hover:opacity-90 rounded-lg transition-colors shadow-sm text-sm" style="background-color: #4589EB;">
-                        <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path>
-                        </svg>
-                        编辑用户
-                    </a>
-                    
-                    {% if user.id != current_user.id %}
-                    {% if user.is_banned %}
-                    <form method="post" action="{{ url_for('unban_user', user_id=user.id) }}" class="inline">
-                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                        <button type="submit" class="inline-flex items-center px-4 py-2 bg-green-600 text-white hover:bg-green-700 rounded-lg transition-colors shadow-sm text-sm">
-                        <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-                        </svg>
-                        解除封禁
-                        </button>
-                    </form>
-                    {% else %}
-                    <a href="{{ url_for('ban_user', user_id=user.id) }}" class="inline-flex items-center px-4 py-2 bg-red-600 text-white hover:bg-red-700 rounded-lg transition-colors shadow-sm text-sm">
-                        <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636"></path>
-                        </svg>
-                        封禁用户
-                    </a>
-                    {% endif %}
-                    {% endif %}
-                    
-                    {% if current_user.is_admin %}
-                    {% if not user.is_admin and not user.is_sub_admin %}
-                    <form method="post" action="{{ url_for('promote_user', user_id=user.id, role='sub_admin') }}" class="inline">
-                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                        <button type="submit" class="inline-flex items-center px-4 py-2 text-white hover:opacity-90 rounded-lg transition-colors shadow-sm text-sm" style="background-color: #4589EB;">
-                        <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"></path>
-                        </svg>
-                        设为子管理员
-                        </button>
-                    </form>
-                    {% elif user.is_sub_admin %}
-                    <form method="post" action="{{ url_for('demote_user', user_id=user.id) }}" class="inline">
-                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                        <button type="submit" class="inline-flex items-center px-4 py-2 bg-yellow-500 text-white hover:bg-yellow-600 rounded-lg transition-colors shadow-sm text-sm">
-                        <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12H9m12 0a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-                        </svg>
-                        取消子管理员
-                        </button>
-                    </form>
-                    {% endif %}
-                    {% endif %}
-                </div>
-            </div>
-            {% endif %}
-            
-            <!-- 个人操作 -->
-            {% if current_user.is_authenticated and current_user.id == user.id %}
-            <div class="border-t border-gray-200 pt-6 mt-6">
-                <h3 class="text-lg font-semibold text-gray-800 mb-4">账号设置</h3>
-                <div class="flex flex-wrap gap-3">
-                    {% if current_user.username != 'tourist' %}
-                    <a href="{{ url_for('edit_profile') }}" class="inline-flex items-center px-4 py-2 text-white hover:opacity-90 rounded-lg transition-colors shadow-sm text-sm" style="background-color: #4589EB;">
-                        <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path>
-                        </svg>
-                        修改个人信息
-                    </a>
-                    {% else %}
-                    <span class="inline-flex items-center px-4 py-2 bg-gray-300 text-gray-500 rounded-lg transition-colors shadow-sm text-sm cursor-not-allowed opacity-70">
-                        <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path>
-                        </svg>
-                        修改个人信息
-                    </span>
-                    <div class="text-xs text-yellow-600 mt-1">游客账户不能修改个人信息</div>
-                    {% endif %}
-                    
-                    {% if current_user.is_admin or current_user.is_sub_admin %}
-                    <a href="{{ url_for('admin_dashboard') }}" class="inline-flex items-center px-4 py-2 text-white hover:opacity-90 rounded-lg transition-colors shadow-sm text-sm" style="background-color: #4589EB;">
-                        <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path>
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
-                        </svg>
-                        控制台
-                    </a>
-                    {% endif %}
-                </div>
-            </div>
-            {% endif %}
-
-        </div>
-    </div>
-
-    <!-- 用户发布的反馈 -->
-    <div class="bg-white rounded-xl shadow-md overflow-hidden mb-8 border border-gray-200 animate-fade-in animate-once delay-100">
-        <div class="bg-gray-50 border-b border-gray-200 px-6 py-4">
-            <h2 class="text-lg font-semibold text-gray-800 flex items-center">
-                <svg class="w-5 h-5 mr-2 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path>
-                </svg>
-                发布的反馈 <span class="ml-2 px-2 py-0.5 bg-gray-200 text-gray-800 text-xs rounded-full">{{ user_posts|length }}</span>
-            </h2>
-        </div>
-        <div class="p-6 md:p-8">
-            {% if user_posts %}
-                <div class="space-y-6">
-                    {% for post in user_posts %}
-                    <a href="{{ url_for('post', id=post.id) }}" class="block bg-white hover:bg-gray-50 transition-colors border border-gray-200 p-5 rounded-lg group animate-fade-in animate-once {% if loop.index0 == 0 %}delay-200{% elif loop.index0 == 1 %}delay-300{% elif loop.index0 == 2 %}delay-400{% else %}delay-500{% endif %}">
-                        <div class="flex items-center mb-2">
-                            <h3 class="text-lg font-semibold">{{ post.title }}
-                                {% if post.is_deleted %}
-                                <span class="bg-red-100 text-red-700 text-xs px-2 py-0.5 rounded ml-2 uppercase tracking-wider font-semibold">已删除</span>
-                                {% endif %}
-                                {% if post.is_pinned %}
-                                <span class="bg-yellow-100 text-yellow-700 text-xs px-2 py-0.5 rounded ml-2 uppercase tracking-wider font-semibold">置顶</span>
-                                {% endif %}
-                            </h3>
-                        </div>
-                        <p class="text-gray-600 line-clamp-2 mb-3">{{ post.content }}</p>
-                        <div class="text-sm text-gray-400">
-                            {% if post.created_at %}{{ post.created_at|format_datetime('%Y-%m-%d %H:%M') }}{% else %}未知时间{% endif %}
-                        </div>
-                    </a>
-                    {% endfor %}
-                </div>
+            <form method="post" action="{{ url_for('unban_user', user_id=user.id) }}">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <button type="submit" class="btn btn-ghost">解除封禁</button>
+            </form>
             {% else %}
-                <div class="flex flex-col items-center justify-center py-12 text-center">
-                    <svg class="w-12 h-12 text-gray-300 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M19 20H5a2 2 0 01-2-2V6a2 2 0 012-2h10a2 2 0 012 2v1M19 20a2 2 0 002-2V8a2 2 0 00-2-2h-1M16 3v4M8 3v4M3 8h14"></path>
-                    </svg>
-                    <p class="text-gray-500">暂无发布的反馈</p>
-                </div>
+            <a class="btn btn-danger" href="{{ url_for('ban_user', user_id=user.id) }}">封禁</a>
             {% endif %}
-        </div>
-    </div>
-
-    <!-- 用户发表的评论 -->
-    <div class="bg-white rounded-xl shadow-md overflow-hidden mb-8 border border-gray-200 animate-fade-in animate-once delay-200">
-        <div class="bg-gray-50 border-b border-gray-200 px-6 py-4">
-            <h2 class="text-lg font-semibold text-gray-800 flex items-center">
-                <svg class="w-5 h-5 mr-2 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z"></path>
-                </svg>
-                发表的评论 <span class="ml-2 px-2 py-0.5 bg-gray-200 text-gray-800 text-xs rounded-full">{{ user_comments|length }}</span>
-            </h2>
-        </div>
-        <div class="p-6 md:p-8">
-            {% if user_comments %}
-                <div class="space-y-6">
-                    {% for comment in user_comments %}
-                    <div class="border border-gray-200 p-5 rounded-lg animate-fade-in animate-once {% if loop.index0 == 0 %}delay-300{% elif loop.index0 == 1 %}delay-400{% elif loop.index0 == 2 %}delay-500{% else %}delay-600{% endif %}">
-                        <div class="flex items-center mb-3">
-                            <span class="text-sm text-gray-400">评论于</span>
-                            <a href="{{ url_for('post', id=comment.post.id) }}" class="ml-1 text-black font-medium hover:underline">{{ comment.post.title }}</a>
-                            {% if comment.is_deleted %}
-                            <span class="bg-red-100 text-red-700 text-xs px-2 py-0.5 rounded-full ml-2">已删除</span>
-                            {% endif %}
-                        </div>
-                        <p class="text-gray-700 mb-3">{{ comment.content|nl2br }}</p>
-                        <div class="text-sm text-gray-400">
-                            {% if comment.created_at %}{{ comment.created_at|format_datetime('%Y-%m-%d %H:%M') }}{% else %}未知时间{% endif %}
-                        </div>
-                    </div>
-                    {% endfor %}
-                </div>
-            {% else %}
-                <div class="flex flex-col items-center justify-center py-12 text-center">
-                    <svg class="w-12 h-12 text-gray-300 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"></path>
-                    </svg>
-                    <p class="text-gray-500">暂无发表的评论</p>
-                </div>
+            {% if current_user.is_admin and not user.is_admin and not user.is_sub_admin %}
+            <form method="post" action="{{ url_for('promote_user', user_id=user.id, role='sub_admin') }}">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <button type="submit" class="btn btn-ghost">设为子管理员</button>
+            </form>
+            {% elif current_user.is_admin and user.is_sub_admin %}
+            <form method="post" action="{{ url_for('demote_user', user_id=user.id) }}">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <button type="submit" class="btn btn-ghost">取消子管理员</button>
+            </form>
             {% endif %}
-        </div>
+        {% endif %}
     </div>
 </div>
-{% endblock %} 
+
+{% if user.is_banned %}
+<div class="notice">
+    <span class="notice-tag">封禁</span>
+    <span>该账号已被封禁{% if user.banned_reason %}：{{ user.banned_reason }}{% endif %}。封禁期间不能提交反馈或回应。</span>
+</div>
+{% endif %}
+
+<div class="stat-row">
+    <div class="stat">
+        <div class="stat-n">{{ user_posts|length }}</div>
+        <div class="stat-k">提交的反馈</div>
+    </div>
+    <div class="stat">
+        <div class="stat-n">{{ user_comments|length }}</div>
+        <div class="stat-k">发表的回应</div>
+    </div>
+    <div class="stat">
+        <div class="stat-n">{{ user_posts|selectattr('has_accepted_comment')|list|length }}</div>
+        <div class="stat-k">已解决</div>
+    </div>
+</div>
+
+<section class="section">
+    <div class="section-head">
+        <h2 class="section-title">提交的反馈</h2>
+        <span class="section-n">{{ user_posts|length }}</span>
+    </div>
+    {% if user_posts %}
+    <div class="mini-list">
+        {% for post in user_posts %}
+        <a class="mini" href="{{ url_for('post', id=post.id) }}">
+            <div class="mini-top">
+                <span class="mini-title">{{ post.title }}</span>
+                {% if post.is_deleted %}<span class="pill pill-blocked">已删除</span>
+                {% elif post.is_tourist_post and post.is_approved is none %}<span class="pill pill-pending">待审核</span>
+                {% elif post.has_accepted_comment %}<span class="pill pill-solved">已解决</span>
+                {% else %}<span class="pill pill-open">待受理</span>{% endif %}
+                {% if post.is_pinned %}<span class="pill pill-plain">置顶</span>{% endif %}
+                <time class="mini-time">#{{ '%04d'|format(post.id) }} · {% if post.created_at %}{{ post.created_at|format_datetime('%m-%d %H:%M') }}{% endif %}</time>
+            </div>
+            <p class="mini-text">{{ post.content }}</p>
+        </a>
+        {% endfor %}
+    </div>
+    {% else %}
+    <p class="mini-empty">还没有提交过反馈。</p>
+    {% endif %}
+</section>
+
+<section class="section">
+    <div class="section-head">
+        <h2 class="section-title">发表的回应</h2>
+        <span class="section-n">{{ user_comments|length }}</span>
+    </div>
+    {% if user_comments %}
+    <div class="mini-list">
+        {% for comment in user_comments %}
+        <a class="mini" href="{{ url_for('post', id=comment.post.id) }}">
+            <div class="mini-top">
+                <span class="mini-title" style="font-weight: 400; color: var(--ink-2);">{{ comment.content[:60] }}{% if comment.content|length > 60 %}…{% endif %}</span>
+                {% if comment.is_deleted %}<span class="pill pill-blocked">已删除</span>{% endif %}
+                <time class="mini-time">{% if comment.created_at %}{{ comment.created_at|format_datetime('%m-%d %H:%M') }}{% endif %}</time>
+            </div>
+            <p class="mini-text">回应于「{{ comment.post.title }}」</p>
+        </a>
+        {% endfor %}
+    </div>
+    {% else %}
+    <p class="mini-empty">还没有发表过回应。</p>
+    {% endif %}
+</section>
+{% endblock %}

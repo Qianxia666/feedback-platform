@@ -1,185 +1,109 @@
 {% extends "base.html" %}
 
 {% block content %}
-<div class="max-w-6xl mx-auto">
-    <div class="mb-8 flex justify-between items-center">
-        <h1 class="text-3xl md:text-4xl font-bold text-gray-900 mb-2 tracking-tight relative pl-4 border-l-4" style="border-left-color: #4589EB;">
-            用户管理
-        </h1>
-        <a href="{{ url_for('admin_dashboard') }}" class="inline-flex items-center px-4 py-2 bg-gray-100 text-gray-700 hover:bg-gray-200 rounded-lg transition-colors text-sm">
-            <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path>
-            </svg>
-            返回上一级
-        </a>
-    </div>
-    
-    <div class="bg-white rounded-2xl shadow-lg overflow-hidden mb-8 border border-gray-200 transform hover:scale-[1.01] transition-transform duration-300">
-        <div class="overflow-x-auto">
-            <table class="min-w-full divide-y divide-gray-200">
-                <thead class="bg-gradient-to-r from-gray-100 to-gray-50">
-                    <tr>
-                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">用户</th>
-                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">邮箱</th>
-                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">角色</th>
-                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">状态</th>
-                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">注册时间</th>
-                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">操作</th>
-                    </tr>
-                </thead>
-                <tbody class="bg-white divide-y divide-gray-200">
-                    {% for user in users.items %}
-                    <tr class="hover:bg-gray-50 transition-colors duration-300">
-                        <td class="px-6 py-4 whitespace-nowrap">
-                            <div class="flex items-center">
-                                <div class="flex-shrink-0 w-10 h-10 rounded-full bg-gradient-to-br from-gray-200 to-gray-300 flex items-center justify-center text-gray-700 font-semibold shadow-sm">
-                                    {{ user.username[0] | upper }}
-                                </div>
-                                <div class="ml-4">
-                                    <a href="{{ url_for('user_profile', username=user.username) }}" class="text-sm font-medium text-gray-900 hover:text-black hover:underline">{{ user.username }}</a>
-                                    <div class="text-xs text-gray-500">ID: {{ user.id }}</div>
-                                </div>
-                            </div>
-                        </td>
-                        <td class="px-6 py-4 whitespace-nowrap">
-                            <div class="text-sm text-gray-500">{{ user.email }}</div>
-                        </td>
-                        <td class="px-6 py-4 whitespace-nowrap">
-                            {% if user.is_admin %}
-                            <span class="px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full text-white shadow-sm" style="background-color: #4589EB;">
-                                管理员
-                            </span>
-                            {% elif user.is_sub_admin %}
-                            <span class="px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full text-white shadow-sm" style="background-color: #4589EB;">
-                                子管理员
-                            </span>
-                            {% else %}
-                            <span class="px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-gray-100 text-gray-800 shadow-sm">
-                                普通用户
-                            </span>
-                            {% endif %}
-                        </td>
-                        <td class="px-6 py-4 whitespace-nowrap">
-                            {% if user.is_banned %}
-                            <span class="px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-red-100 text-red-800 shadow-sm">
-                                已封禁
-                            </span>
-                            {% else %}
-                            <span class="px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800 shadow-sm">
-                                正常
-                            </span>
-                            {% endif %}
-                        </td>
-                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                            {% if user.created_at %}{{ user.created_at|format_datetime('%Y-%m-%d %H:%M') }}{% else %}未知{% endif %}
-                        </td>
-                        <td class="px-6 py-4 whitespace-nowrap">
-                            <div class="flex flex-wrap gap-2">
-                                {% if current_user.is_admin or (current_user.is_sub_admin and not user.is_admin and not user.is_sub_admin) %}
-                                <a href="{{ url_for('edit_user', user_id=user.id) }}" class="inline-flex items-center px-3 py-1.5 text-xs font-medium rounded-lg transition-all duration-200 hover:shadow-md" style="background-color: #4589EB; color: white;">
-                                    <svg class="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path>
-                                    </svg>
-                                    编辑
-                                </a>
-
-                                {% if current_user.is_admin %}
-                                {% if not user.is_admin and not user.is_sub_admin %}
-                                <form method="post" action="{{ url_for('promote_user', user_id=user.id, role='sub_admin') }}" class="inline">
-                                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                                    <button type="submit" class="inline-flex items-center px-3 py-1.5 text-xs font-medium rounded-lg transition-all duration-200 hover:shadow-md" style="background-color: #4589EB; color: white;">
-                                    <svg class="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 11l5-5m0 0l5 5m-5-5v12"></path>
-                                    </svg>
-                                    提升为子管理员
-                                    </button>
-                                </form>
-                                {% elif user.is_sub_admin %}
-                                <form method="post" action="{{ url_for('demote_user', user_id=user.id) }}" class="inline">
-                                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                                    <button type="submit" class="inline-flex items-center px-3 py-1.5 text-xs font-medium rounded-lg transition-all duration-200 hover:shadow-md" style="background-color: #f59e0b; color: white;">
-                                    <svg class="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 13l-5 5m0 0l-5-5m5 5V6"></path>
-                                    </svg>
-                                    降级
-                                    </button>
-                                </form>
-                                {% endif %}
-                                {% endif %}
-
-                                {% if user.is_banned %}
-                                <form method="post" action="{{ url_for('unban_user', user_id=user.id) }}" class="inline">
-                                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                                    <button type="submit" class="inline-flex items-center px-3 py-1.5 text-xs font-medium rounded-lg transition-all duration-200 hover:shadow-md" style="background-color: #10b981; color: white;">
-                                    <svg class="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-                                    </svg>
-                                    解除封禁
-                                    </button>
-                                </form>
-                                {% else %}
-                                {% if user.id != current_user.id %}
-                                <a href="{{ url_for('ban_user', user_id=user.id) }}" class="inline-flex items-center px-3 py-1.5 text-xs font-medium rounded-lg transition-all duration-200 hover:shadow-md" style="background-color: #ef4444; color: white;">
-                                    <svg class="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728L5.636 5.636m12.728 12.728L18.364 5.636M5.636 18.364l12.728-12.728"></path>
-                                    </svg>
-                                    封禁
-                                </a>
-                                {% endif %}
-                                {% endif %}
-                                {% endif %}
-                            </div>
-                        </td>
-                    </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
-        </div>
-    </div>
-    
-    <!-- 分页 -->
-    <div class="mt-8 flex justify-center">
-        <nav class="modern-pagination" aria-label="Pagination">
-            {% if users.has_prev %}
-            <a href="{{ url_for('admin_users', page=users.prev_num) }}" class="pagination-btn pagination-btn-prev">
-                <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
-                </svg>
-                <span class="ml-2">上一页</span>
-            </a>
-            {% else %}
-            <span class="pagination-btn pagination-btn-disabled">
-                <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
-                </svg>
-                <span class="ml-2">上一页</span>
-            </span>
-            {% endif %}
-
-            <div class="flex pagination-mobile-info">
-                <span class="pagination-btn pagination-btn-info">
-                    <span class="font-semibold text-blue-600">{{ users.page }}</span>
-                    <span class="mx-1 text-gray-400">/</span>
-                    <span class="text-gray-600">{{ users.pages }}</span>
-                </span>
-            </div>
-
-            {% if users.has_next %}
-            <a href="{{ url_for('admin_users', page=users.next_num) }}" class="pagination-btn pagination-btn-next">
-                <span class="mr-2">下一页</span>
-                <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
-                </svg>
-            </a>
-            {% else %}
-            <span class="pagination-btn pagination-btn-disabled">
-                <span class="mr-2">下一页</span>
-                <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
-                </svg>
-            </span>
-            {% endif %}
-        </nav>
+<div class="page-head">
+    <div>
+        <span class="eyebrow">管理台</span>
+        <h1 class="page-title">用户 <span class="count">{{ users.total }} 个账号</span></h1>
+        <p class="page-lede">调整角色、封禁账号，或者进入个人主页查看他的提交记录。</p>
     </div>
 </div>
-{% endblock %} 
+
+<nav class="admin-tabs" aria-label="管理导航">
+    <a class="admin-tab" href="{{ url_for('admin_dashboard') }}">概览</a>
+    <a class="admin-tab is-on" href="{{ url_for('admin_users') }}">用户</a>
+    <a class="admin-tab" href="{{ url_for('admin_pending_posts') }}">审核</a>
+    {% if current_user.is_admin %}
+    <a class="admin-tab" href="{{ url_for('admin_settings') }}">设置</a>
+    {% endif %}
+</nav>
+
+<div class="panel">
+    <div class="table-wrap">
+        <table class="table is-cards">
+            <thead>
+                <tr>
+                    <th>用户</th>
+                    <th class="hide-sm">邮箱</th>
+                    <th>角色</th>
+                    <th>状态</th>
+                    <th class="hide-sm">注册时间</th>
+                    <th style="text-align: right;">操作</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for user in users.items %}
+                <tr>
+                    <td>
+                        <div class="user-cell">
+                            <span class="avatar">{{ user.username[0]|upper }}</span>
+                            <div class="user-cell-main">
+                                <a class="strong" href="{{ url_for('user_profile', username=user.username) }}">{{ user.username }}</a>
+                                <span class="sub">UID {{ user.id }}</span>
+                            </div>
+                        </div>
+                    </td>
+                    <td class="hide-sm"><span class="muted">{{ user.email or '—' }}</span></td>
+                    <td>
+                        {% if user.is_admin %}<span class="role-tag">管理员</span>
+                        {% elif user.is_sub_admin %}<span class="role-tag">子管理员</span>
+                        {% else %}<span class="role-tag is-plain">普通用户</span>{% endif %}
+                    </td>
+                    <td>
+                        {% if user.is_banned %}<span class="pill pill-blocked">已封禁</span>
+                        {% else %}<span class="pill pill-solved">正常</span>{% endif %}
+                    </td>
+                    <td class="hide-sm"><span class="mono">{{ user.created_at|format_datetime('%Y-%m-%d') if user.created_at else '—' }}</span></td>
+                    <td>
+                        <div class="row-actions">
+                            {% if current_user.is_admin or (current_user.is_sub_admin and not user.is_admin and not user.is_sub_admin) %}
+                            <a class="btn-quiet" href="{{ url_for('edit_user', user_id=user.id) }}">编辑</a>
+
+                            {% if current_user.is_admin %}
+                                {% if not user.is_admin and not user.is_sub_admin %}
+                                <form method="post" action="{{ url_for('promote_user', user_id=user.id, role='sub_admin') }}">
+                                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                    <button type="submit" class="btn-quiet">设为子管理员</button>
+                                </form>
+                                {% elif user.is_sub_admin %}
+                                <form method="post" action="{{ url_for('demote_user', user_id=user.id) }}">
+                                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                    <button type="submit" class="btn-quiet">取消子管理员</button>
+                                </form>
+                                {% endif %}
+                            {% endif %}
+
+                            {% if user.is_banned %}
+                            <form method="post" action="{{ url_for('unban_user', user_id=user.id) }}">
+                                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                <button type="submit" class="btn-quiet">解除封禁</button>
+                            </form>
+                            {% elif user.id != current_user.id %}
+                            <a class="btn-quiet is-danger" href="{{ url_for('ban_user', user_id=user.id) }}">封禁</a>
+                            {% endif %}
+                            {% endif %}
+                        </div>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+{% if users.pages and users.pages > 1 %}
+<nav class="pager" aria-label="分页">
+    {% if users.has_prev %}
+    <a class="pager-link" href="{{ url_for('admin_users', page=users.prev_num) }}">← 上一页</a>
+    {% else %}
+    <span class="pager-link is-off">← 上一页</span>
+    {% endif %}
+    <span class="pager-now">{{ users.page }} / {{ users.pages }}</span>
+    {% if users.has_next %}
+    <a class="pager-link" href="{{ url_for('admin_users', page=users.next_num) }}">下一页 →</a>
+    {% else %}
+    <span class="pager-link is-off">下一页 →</span>
+    {% endif %}
+</nav>
+{% endif %}
+{% endblock %}

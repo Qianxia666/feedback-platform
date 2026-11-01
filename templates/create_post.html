@@ -1,54 +1,46 @@
 {% extends "base.html" %}
 
 {% block content %}
-<div class="max-w-3xl mx-auto bg-white rounded-xl sm:rounded-3xl shadow-lg border border-gray-200 p-4 sm:p-6 lg:p-8 my-6 sm:my-12">
-    <div class="mb-6 sm:mb-8">
-        <a href="{{ url_for('index') }}" class="inline-flex items-center text-gray-600 hover:text-blue-600 transition-colors duration-200 text-sm sm:text-base" style="hover:color: #4589EB;">
-            <svg class="w-4 h-4 sm:w-5 sm:h-5 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path>
-            </svg>
-            返回首页
-        </a>
-    </div>
+<a class="crumb" href="{{ url_for('index') }}">← 返回台账</a>
 
-    <div class="text-center mb-6 sm:mb-8">
-        <h1 class="text-xl sm:text-2xl lg:text-3xl font-bold text-gray-900 mb-2 sm:mb-3">发布新反馈</h1>
-        <div class="h-1 w-16 sm:w-24 rounded-full mx-auto" style="background: #4589EB;"></div>
-        <p class="text-gray-500 mt-2 sm:mt-3 text-xs sm:text-sm leading-relaxed px-2">请详细描述您的问题或建议，以便我们更好地了解和处理</p>
-    </div>
-    
-    <form method="post" action="" class="space-y-6 sm:space-y-8">
+<div class="form-layout">
+    <aside class="form-aside">
+        <span class="eyebrow">新工单</span>
+        <h1 class="page-title">提一条反馈</h1>
+        <p class="page-lede">写清楚这三件事，基本就不用再来回问了。</p>
+        <ol class="aside-list">
+            <li>你在做什么操作，用的哪个页面。</li>
+            <li>点下去之后，实际发生了什么。</li>
+            <li>你原本期待的结果是什么。</li>
+        </ol>
+    </aside>
+
+    <form method="post" action="" class="form-card">
         {{ form.hidden_tag() }}
 
-        <div class="bg-gray-50 p-4 sm:p-6 rounded-xl sm:rounded-2xl border border-gray-100">
-            <label for="title" class="block text-sm sm:text-base font-semibold text-gray-800 mb-2">标题</label>
-            <p class="text-xs text-gray-500 mb-3 leading-relaxed">一个清晰简洁的标题能帮助您的反馈更快被响应</p>
-            {{ form.title(class="w-full px-3 sm:px-4 py-2.5 sm:py-3 border border-gray-300 rounded-lg sm:rounded-xl shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200 text-sm sm:text-base", placeholder="请输入反馈标题", style="focus:ring-color: #4589EB; focus:border-color: #4589EB;") }}
+        <div class="field {% if form.title.errors %}has-error{% endif %}">
+            <label class="field-label" for="title">标题 <span class="req">必填</span></label>
+            {{ form.title(id="title", placeholder="一句话说清问题", maxlength="200") }}
+            <span class="hint">例如：导出 CSV 时按钮被筛选框挡住</span>
             {% if form.title.errors %}
-            <div class="text-red-500 text-xs sm:text-sm mt-2">
-                {% for error in form.title.errors %}
-                <p>{{ error }}</p>
-                {% endfor %}
-            </div>
+            <span class="error">{% for e in form.title.errors %}{{ e }}{% endfor %}</span>
             {% endif %}
         </div>
 
-        <div class="bg-gray-50 p-4 sm:p-6 rounded-xl sm:rounded-2xl border border-gray-100">
-            <label for="content" class="block text-sm sm:text-base font-semibold text-gray-800 mb-2">内容</label>
-            <p class="text-xs text-gray-500 mb-3 leading-relaxed">详细描述您遇到的问题或建议，包括操作步骤、现象等信息</p>
-            {{ form.content(class="w-full px-3 sm:px-4 py-2.5 sm:py-3 border border-gray-300 rounded-lg sm:rounded-xl shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200 text-sm sm:text-base resize-y", placeholder="请详细描述您的反馈内容...", rows="8", style="focus:ring-color: #4589EB; focus:border-color: #4589EB;") }}
+        <div class="field {% if form.content.errors %}has-error{% endif %}">
+            <label class="field-label" for="content">详细描述 <span class="req">必填</span></label>
+            {{ form.content(id="content", placeholder="复现步骤、期望结果、实际结果……", rows="10") }}
+            <span class="hint">可以附上页面地址、浏览器版本，或者截图链接。信息越具体，定位越快。</span>
             {% if form.content.errors %}
-            <div class="text-red-500 text-xs sm:text-sm mt-2">
-                {% for error in form.content.errors %}
-                <p>{{ error }}</p>
-                {% endfor %}
-            </div>
+            <span class="error">{% for e in form.content.errors %}{{ e }}{% endfor %}</span>
             {% endif %}
         </div>
 
-        <div class="flex justify-center mt-6 sm:mt-8">
-            {{ form.submit(class="w-full sm:w-auto inline-flex justify-center py-3 px-6 sm:px-8 border border-transparent rounded-lg sm:rounded-full shadow-md text-sm sm:text-base font-medium text-white hover:opacity-90 focus:outline-none focus:ring-2 focus:ring-offset-2 transition-all duration-300 transform hover:-translate-y-1", style="background-color: #4589EB; focus:ring-color: #4589EB;") }}
+        <div class="form-foot">
+            {{ form.submit(value="提交", class="btn btn-primary") }}
+            <a class="form-cancel" href="{{ url_for('index') }}">取消</a>
+            <span class="note">提交后会立即出现在台账里</span>
         </div>
     </form>
 </div>
-{% endblock %} 
+{% endblock %}
