@@ -1,9 +1,13 @@
 {% extends "base.html" %}
 
 {% block content %}
-<div class="max-w-xl mx-auto py-16 text-center">
-    <h1 class="text-3xl font-bold text-gray-900 mb-4">无权访问</h1>
-    <p class="text-gray-600 mb-8">您的账户没有执行此操作所需的权限。</p>
-    <a href="{{ url_for('index') }}" class="inline-flex px-4 py-2 text-white rounded hover:opacity-90 transition" style="background-color: #4589EB;">返回首页</a>
+<div class="err">
+    <p class="err-code">ERROR 403</p>
+    <h1 class="err-title">没有权限</h1>
+    <p class="err-text">这个页面只对管理员开放。如果你认为这是误判，可以联系站点管理员。</p>
+    <div class="err-actions">
+        <a class="btn btn-primary" href="{{ url_for('index') }}">回到反馈台账</a>
+        <a class="btn btn-ghost" href="javascript:history.back()">返回上一页</a>
+    </div>
 </div>
 {% endblock %}

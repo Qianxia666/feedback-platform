@@ -1,90 +1,85 @@
 {% extends "base.html" %}
 
 {% block content %}
-<style>
-/* 自定义开关样式 */
-input[type="checkbox"]:checked + div {
-    background-color: #4589EB !important;
-}
-</style>
-<div class="max-w-6xl mx-auto">
-    <div class="mb-8 flex justify-between items-center">
-        <h1 class="text-3xl md:text-4xl font-bold text-gray-900 mb-2 tracking-tight relative pl-4 border-l-4" style="border-left-color: #4589EB;">
-            系统设置
-        </h1>
-        <a href="{{ url_for('admin_dashboard') }}" class="inline-flex items-center px-4 py-2 bg-gray-100 text-gray-700 hover:bg-gray-200 rounded-lg transition-colors text-sm">
-            <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path>
-            </svg>
-            返回上一级
-        </a>
-    </div>
-    
-    <div class="bg-white rounded-2xl shadow-lg overflow-hidden mb-8 border border-gray-200 transform hover:scale-[1.01] transition-transform duration-300">
-        <div class="p-6">
-            <form method="post" action="{{ url_for('admin_settings') }}">
-                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                <div class="space-y-6">
-                    <div>
-                        <label for="platform_name" class="block text-sm font-medium text-gray-700 mb-1">平台名称</label>
-                        <input type="text" name="platform_name" id="platform_name" value="{{ platform_name }}" 
-                               class="px-4 py-2 border border-gray-300 rounded-md shadow-sm w-full focus:ring-blue-500 focus:border-blue-500" style="focus:ring-color: #4589EB; focus:border-color: #4589EB;">
-                        <p class="mt-1 text-sm text-gray-500">显示在页面顶部和标题中的平台名称</p>
-                    </div>
-                    
-                    <div>
-                        <label for="allow_tourist" class="block text-sm font-medium text-gray-700 mb-1">游客登录控制</label>
-                        <div class="flex items-center">
-                            <label class="inline-flex relative items-center cursor-pointer">
-                                <input type="checkbox" name="allow_tourist" id="allow_tourist" {% if allow_tourist == 'true' %}checked{% endif %} class="sr-only peer">
-                                <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all" style="--tw-peer-checked-bg-opacity: 1; --tw-peer-checked-bg-color: #4589EB;" data-checked-bg="#4589EB"></div>
-                            </label>
-                            <span class="ml-3 text-sm font-medium text-gray-700">{{ '已开启' if allow_tourist == 'true' else '已关闭' }}</span>
-                        </div>
-                        <p class="mt-1 text-sm text-gray-500">开启时允许游客登录并发帖评论，关闭时禁止游客登录及相关操作</p>
-                    </div>
-                    
-                    <div>
-                        <label for="allow_tourist_comment" class="block text-sm font-medium text-gray-700 mb-1">游客评论控制</label>
-                        <div class="flex items-center">
-                            <label class="inline-flex relative items-center cursor-pointer">
-                                <input type="checkbox" name="allow_tourist_comment" id="allow_tourist_comment" {% if allow_tourist_comment == 'true' %}checked{% endif %} class="sr-only peer">
-                                <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all" style="--tw-peer-checked-bg-opacity: 1; --tw-peer-checked-bg-color: #4589EB;" data-checked-bg="#4589EB"></div>
-                            </label>
-                            <span class="ml-3 text-sm font-medium text-gray-700">{{ '已开启' if allow_tourist_comment == 'true' else '已关闭' }}</span>
-                        </div>
-                        <p class="mt-1 text-sm text-gray-500">开启时允许游客评论帖子，关闭时游客不能评论（即使允许游客登录）</p>
-                    </div>
-
-                    <div>
-                        <label for="timezone" class="block text-sm font-medium text-gray-700 mb-1">系统时区</label>
-                        <select name="timezone" id="timezone" class="px-4 py-2 border border-gray-300 rounded-md shadow-sm w-full focus:ring-blue-500 focus:border-blue-500" style="focus:ring-color: #4589EB; focus:border-color: #4589EB;">
-                            <option value="Asia/Shanghai" {% if timezone_setting == 'Asia/Shanghai' %}selected{% endif %}>Asia/Shanghai (中国标准时间)</option>
-                            <option value="UTC" {% if timezone_setting == 'UTC' %}selected{% endif %}>UTC (协调世界时)</option>
-                            <option value="America/New_York" {% if timezone_setting == 'America/New_York' %}selected{% endif %}>America/New_York (美国东部时间)</option>
-                            <option value="Europe/London" {% if timezone_setting == 'Europe/London' %}selected{% endif %}>Europe/London (英国时间)</option>
-                            <option value="Asia/Tokyo" {% if timezone_setting == 'Asia/Tokyo' %}selected{% endif %}>Asia/Tokyo (日本时间)</option>
-                            <option value="Australia/Sydney" {% if timezone_setting == 'Australia/Sydney' %}selected{% endif %}>Australia/Sydney (澳大利亚东部时间)</option>
-                        </select>
-                        <p class="mt-1 text-sm text-gray-500">设置系统显示时间的时区，影响所有时间显示</p>
-                    </div>
-
-                    <div class="pt-4 border-t border-gray-200">
-                        <div class="flex flex-col sm:flex-row gap-4">
-                            <button type="submit" class="inline-flex justify-center py-2 px-6 border border-transparent shadow-sm text-sm font-medium rounded-md text-white hover:opacity-90 focus:outline-none focus:ring-2 focus:ring-offset-2" style="background-color: #4589EB; focus:ring-color: #4589EB;">
-                                保存设置
-                            </button>
-                            <button type="submit" formaction="{{ url_for('export_database') }}" formmethod="post" class="inline-flex justify-center py-2 px-6 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500" onclick="return confirm('确定要导出数据库吗？这将下载完整的数据库文件。')">
-                                <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
-                                </svg>
-                                导出数据库
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            </form>
-        </div>
+<div class="page-head">
+    <div>
+        <span class="eyebrow">管理台 · 设置</span>
+        <h1 class="page-title">系统设置</h1>
+        <p class="page-lede">平台名称、游客权限和时区。改动即时生效。</p>
     </div>
 </div>
-{% endblock %} 
+
+<nav class="admin-tabs" aria-label="管理导航">
+    <a class="admin-tab" href="{{ url_for('admin_dashboard') }}">概览</a>
+    <a class="admin-tab" href="{{ url_for('admin_users') }}">用户</a>
+    <a class="admin-tab" href="{{ url_for('admin_pending_posts') }}">审核</a>
+    <a class="admin-tab is-on" href="{{ url_for('admin_settings') }}">设置</a>
+</nav>
+
+<div class="form-layout">
+    <aside class="form-aside">
+        <span class="eyebrow">基础配置</span>
+        <h1 class="page-title" style="font-size: 20px;">公开规则</h1>
+        <p class="page-lede">这两项开关决定未注册访客能看到什么、能做什么。</p>
+        <ol class="aside-list">
+            <li>关闭游客登录后，未注册访客只能浏览。</li>
+            <li>游客回应需要单独开启。</li>
+            <li>导出会下载完整的数据库文件。</li>
+        </ol>
+    </aside>
+
+    <form method="post" action="{{ url_for('admin_settings') }}" class="form-card">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+        <div class="field">
+            <label class="field-label" for="platform_name">平台名称</label>
+            <input type="text" name="platform_name" id="platform_name" value="{{ platform_name }}">
+            <span class="hint">显示在顶栏、页面标题和页脚。</span>
+        </div>
+
+        <div class="switch-row">
+            <div class="switch-copy">
+                <p class="switch-title">允许游客登录</p>
+                <p class="switch-hint">开启后，未注册访客可以游客身份提交反馈。</p>
+            </div>
+            <label class="switch">
+                <input type="checkbox" name="allow_tourist" id="allow_tourist" {% if allow_tourist == 'true' %}checked{% endif %}>
+                <span class="switch-track" aria-hidden="true"><span class="switch-knob"></span></span>
+                <span class="sr-only">允许游客登录</span>
+            </label>
+        </div>
+
+        <div class="switch-row">
+            <div class="switch-copy">
+                <p class="switch-title">允许游客回应</p>
+                <p class="switch-hint">即使允许游客登录，也可以单独关掉他们的回应权限。</p>
+            </div>
+            <label class="switch">
+                <input type="checkbox" name="allow_tourist_comment" id="allow_tourist_comment" {% if allow_tourist_comment == 'true' %}checked{% endif %}>
+                <span class="switch-track" aria-hidden="true"><span class="switch-knob"></span></span>
+                <span class="sr-only">允许游客回应</span>
+            </label>
+        </div>
+
+        <div class="field" style="margin-top: 22px;">
+            <label class="field-label" for="timezone">系统时区</label>
+            <select name="timezone" id="timezone">
+                <option value="Asia/Shanghai" {% if timezone_setting=='Asia/Shanghai' %}selected{% endif %}>Asia/Shanghai · 中国标准时间</option>
+                <option value="UTC" {% if timezone_setting=='UTC' %}selected{% endif %}>UTC · 协调世界时</option>
+                <option value="America/New_York" {% if timezone_setting=='America/New_York' %}selected{% endif %}>America/New_York · 美国东部时间</option>
+                <option value="Europe/London" {% if timezone_setting=='Europe/London' %}selected{% endif %}>Europe/London · 英国时间</option>
+                <option value="Asia/Tokyo" {% if timezone_setting=='Asia/Tokyo' %}selected{% endif %}>Asia/Tokyo · 日本时间</option>
+                <option value="Australia/Sydney" {% if timezone_setting=='Australia/Sydney' %}selected{% endif %}>Australia/Sydney · 澳大利亚东部时间</option>
+            </select>
+            <span class="hint">影响全站时间的显示方式。</span>
+        </div>
+
+        <div class="form-foot">
+            <button type="submit" class="btn btn-primary">保存设置</button>
+            <button type="submit" formaction="{{ url_for('export_database') }}" formmethod="post" class="btn btn-ghost"
+                onclick="return confirm('确定导出数据库？将下载完整的数据文件。')">导出数据库</button>
+            <span class="note">导出包含全部用户与反馈数据</span>
+        </div>
+    </form>
+</div>
+{% endblock %}

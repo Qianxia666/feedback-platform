@@ -16,6 +16,7 @@ import pytz
 
 def create_app(config_class=Config):
     app = Flask(__name__)
+    app.config['TEMPLATES_AUTO_RELOAD'] = True
     app.config.from_object(config_class)
     CSRFProtect(app)
 
